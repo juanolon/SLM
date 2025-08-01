@@ -121,37 +121,47 @@
         </div>
     </section>
 
-    <section class="section" id="introduction">
+    <section class="section" id="contribution">
         <div class="container">
 
             <div class="columns is-centered">
                 <div class="column is-10">
-                    <h2 class="title is-3">Introduction</h2>
+                    <h2 class="title is-3">Core Contribution</h2>
                     <div class="content">
                         <p>
-                            We introduce <strong>Enigmata</strong>, the first comprehensive suite tailored for improving LLMs with puzzle reasoning skills, which integrates seamlessly with reinforcement learning using verifiable rule-based rewards.
+                            We introduce the <strong>ShortListing Model (SLM)</strong>, a novel simplex-based diffusion model inspired by progressive candidate pruning. 
+                            
                         </p>
-                        
-                        <p> <strong>Enigmata-Data</strong> includes 36 tasks across 7 categories, each with: 1) a generator that produces unlimited examples with controllable difficulty, and 2) a rule-based verifier for automatic evaluation. This generator-verifier design supports scalable, multi-task RL training, fine-grained analysis, and seamless RLVR integration.
-                        We further propose <strong>Enigmata-Eval</strong>, a rigorous benchmark for assessing puzzle reasoning abilities and guiding research on generalizable reasoning models.                            
-                            </p>
 
-                            <p><strong>Qwen2.5-32B-Enigmata</strong>, trained with RLVR, consistently surpasses o3-mini-high and o1 on the puzzle reasoning benchmarks like Enigmata-Eval, ARC-AGI, and ARC-AGI 2. It also generalizes well to out-of-domain puzzle benchmarks and mathematical reasoning, with little multitasking trade-off.</p>
-                            <p>When trained on <strong>larger models like Seed1.5-Thinking</strong> (20B activated parameters and 200B total parameters), puzzle data from Enigmata further boosts SoTA performance on advanced math and STEM reasoning tasks such as AIME (2024-2025), BeyondAIME and GPQA (Diamond), showing nice generalization benefits of Enigmata.
-                            </p>
-                        
-                            <strong><em style="color: #3a76ed"><center>We hope Enigmata serves as a solid foundation for the community to push forth the research on reasoning models!</center></em></strong>
-                        <!-- <p>
-                            Our key contributions are:
-                            <ul>
-                                <li>We introduce Enigmata, the first suite for enabling LLMs with advanced and comprehensive logical reasoning abilities for solving puzzles.</li>
-                                <li>The Enigmata suite consists of Enigmata-Data, featuring <strong>36 distinct tasks across 7 categories</strong> with
-                                    controllable difficulty, scalable generation, and automatic verification, which seamlessly fit the RLVR
-                                    training paradigm.</li>
-                                <li>We establish Enigmata-Eval, a benchmark that rigorously and comprehensively evaluates puzzle
-                                    reasoning abilities, and propose the Enigmata-Model recipe that trains models with superior performance
-                                    on in-domain and OOD puzzle reasoning tasks.</li>
-                                </ul> -->
+                        <!-- Inserted image row -->
+                        <div class="columns is-centered">
+                            <div class="column is-8">
+                                <figure class="image is-16by12">
+                                    <img src="./assets/SLM_Overview.png" alt="Main Image">
+                                    <figcaption class="has-text-centered mt-2">Overview of SLM Forward and Reverse Process</figcaption>
+                                </figure>
+                            </div>
+                        </div>
+
+                        <div class="columns is-variable is-6">
+                            <div class="column is-6">
+                                <figure class="image is-7by6">
+                                    <img src="./assets/SLM_Overview_MDM.png" alt="Left Image">
+                                    <figcaption class="has-text-centered mt-2">Process of Masked Diffusion transition</figcaption>
+                                </figure>
+                            </div>
+                            <div class="column is-6">
+                                <figure class="image is-7by6">
+                                    <img src="./assets/SLM_Overview_D3PM.png" alt="Right Image">
+                                    <figcaption class="has-text-centered mt-2">Process of Uniform Diffusion transition</figcaption>
+                                </figure>
+                            </div>
+                        </div>
+
+                        <p>
+                            <strong><em style="color: #3a76ed">Combining the strengths of masked discrete diffusion and uniform discrete diffusion, SLM serves as simpler yet effective alternatives dealing with discrete variables with gradual information growth.</em></strong>
+                        </p>
+                    
 
                     </div>
                 </div>
@@ -160,363 +170,96 @@
         </div>
     </section>
 
-    <section class="section" id="data">
+
+    <section class="section" id="exp_text">
         <div class="container">
             <div class="columns is-centered">
                 <div class="column is-10">
-                    <h2 class="title is-3">🧩 Enigmata-Data: Synthetic Verifiable Puzzle Generation</h2>
+                    <h2 class="title is-3">Strong Performance in Language Modeling</h2>
                     <div class="content">
-                        <p><strong>Enigmata-Data</strong> comprises <strong>36 distinct task types spanning 7 categories of logical reasoning puzzles</strong>. Each task is built with two core components: (1) <strong>Generator</strong>: Produces massive puzzle instances with precisely controllable difficulty parameters; (2) <strong>Verifier</strong>: Provides automatic, rule-based solution validation for reliable evaluation.</p>
-                        <!-- <p>For comprehensive details on each task, please refer to our task documentation.</p> -->
-                    </div>
-                    <div
-                        style="background-color: #f8fafc; border-radius: 12px; border-left: 6px solid #3a76ed; padding: 1.2rem; margin-bottom: 1.5rem;">
-                            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
-                                <div style="display: flex; align-items: flex-start; gap: 0.8rem;"> 
-                                    <div
-                                        style="background-color: #3a76ed; color: white; padding: 0.4rem; border-radius: 50%; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; min-width: 2rem; height: 2rem;">
-                                        1
-                                    </div>
-                                    <div>
-                                        <p style="margin: 0; line-height: 1.4;"><strong>Unlimited Self-Verifying Data: </strong>
-                                            It can generate an unlimited supply of self-verifying puzzle prompts, which plug seamlessly into the RLVR framework and support long chain-of-thought training.</p>
-                                    </div>
-                                </div>
-                        
-                                <div style="display: flex; align-items: flex-start; gap: 0.8rem;">
-                                    <div
-                                        style="background-color: #3a76ed; color: white; padding: 0.4rem; border-radius: 50%; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; min-width: 2rem; height: 2rem;">
-                                        2
-                                    </div>
-                                    <div>
-                                    <p style="margin: 0; line-height: 1.4;"><strong>Controlled Difficulty:</strong> Programmatic difficulty control allows researchers to mix puzzles in desired difficulty ratios and to conduct fine-grained experiments on how curriculum design influences reinforcement learning.</p>
-                                    </div>
-                                </div>
+                        <p>SLM achieve strong performance among non-autoregressive methods on text8 and obtain competitive results on OpenWebText, where previous simplex-based approaches had difficulty generating reasonable outputs. </p> 
+                            
+                        <p>   <strong> SLM substantially narrows the gap from discrete diffusion to autoregressive performance</strong>. </p>
 
-                                <div style="display: flex; align-items: flex-start; gap: 0.8rem;">
-                                    <div
-                                        style="background-color: #3a76ed; color: white; padding: 0.4rem; border-radius: 50%; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; min-width: 2rem; height: 2rem;">
-                                        3
-                                    </div>
-                                    <div>
-                                        <p style="margin: 0; line-height: 1.4;"><strong>Flexible Task Sampling:</strong> Generators can emit arbitrary sample counts per task, enabling studies of task balancing and cross-task generalization.</p>
-                                    </div>
-                                </div>                                
-                        </div>
-                    </div>
-         
-                    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <div class="bg-white p-6 rounded-lg shadow-xl border border-gray-200">
-                            <div class="mb-4 flex items-center justify-between border-b pb-4">
-                                <h3 class="text-xl font-semibold text-gray-800">
-                                    <span id="current-page-index">1</span>/<span id="total-pages"></span>
-                                </h3>
-                                <h3 class="text-xl font-semibold text-gray-800">
-                                    <span id="current-page-index">Details of 36 tasks in Enigmata</span>
-                                </h3>
-                                <div class="flex space-x-2">
-                                    <button id="prev-page-btn"
-                                        class="p-2 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                            class="lucide lucide-chevron-left h-5 w-5 text-gray-600">
-                                            <path d="m15 18-6-6 6-6"></path>
-                                        </svg>
-                                    </button>
-                                    <button id="next-page-btn"
-                                        class="p-2 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                            class="lucide lucide-chevron-right h-5 w-5 text-gray-600">
-                                            <path d="m9 18 6-6-6-6"></path>
-                                        </svg>
-                                    </button>
+                        <div class="columns is-vcentered is-multiline mt-5" >
+                            <!-- Left Table (Text8 BPC) -->
+                            <div class="column is-6">
+                                <div class="table-container">
+                                
+                                <table class="table is-bordered is-fullwidth is-striped is-narrow has-text-centered is-vcentered">
+                                    <thead>
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Method</th>
+                                        <th>BPC (↓)</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr><td rowspan="3" class="is-vcentered"><em>Autoregressive</em></td><td><strong>Transformer AR</strong></td><td><strong>1.23</strong></td></tr>
+                                    <tr><td>AR Argmax Flow</td><td>1.39</td></tr>
+                                    <tr><td>AR Discrete Flow</td><td><strong>1.23</strong></td></tr>
+
+                                    <tr><td rowspan="2"><em>Any-order<br>Autoregressive</em></td><td>ARDM</td><td>≤ 1.43</td></tr>
+                                    <tr><td>MAC</td><td>≤ 1.40</td></tr>
+
+                                    <tr><td><em>Continuous Diffusion</em></td><td>Plaid</td><td>≤ 1.48</td></tr>
+
+                                    <tr><td rowspan="6" class="is-vcentered"><em>Discrete Diffusion</em></td><td>Mult. Diffusion</td><td>≤ 1.72</td></tr>
+                                    <tr><td>D3PM Uniform</td><td>≤ 1.61</td></tr>
+                                    <tr><td>D3PM Absorb</td><td>≤ 1.45</td></tr>
+                                    <tr><td>SEDD Absorb</td><td>≤ 1.41</td></tr>
+                                    <tr><td>MDLM</td><td>≤ 1.39</td></tr>
+                                    <tr><td>MD4</td><td>≤ 1.37</td></tr>
+
+                                    <tr><td rowspan="5" class="is-vcentered"><em>Simplex Approaches</em></td><td>BFN</td><td>≤ 1.41</td></tr>
+                                    <tr><td>DFM</td><td>≤ 1.41</td></tr>
+                                    <tr><td>SFM</td><td>1.39</td></tr>
+                                    <tr class="has-background-light"><td><strong>SLM: L_simple</strong></td><td><strong>≤ 1.42</strong></td></tr>
+                                    <tr class="has-background-light"><td><strong>SLM: L_weight</strong></td><td><strong>≤ 1.38</strong></td></tr>
+                                    </tbody>
+                                </table>
+                                <p class="has-text-centered is-size-8 mb-2">
+                                    <strong>Bits Per Character (BPC) on Text8 Test Set</strong>
+                                </p>
                                 </div>
                             </div>
-                
-                            <div id="dataset-display-area" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                            <!-- Right Table (OpenWebText Performance) -->
+                            <div class="column is-6">
+                                <div class="table-container">
+                                
+                                <table class="table is-bordered is-fullwidth is-striped is-narrow has-text-centered">
+                                    <thead>
+                                    <tr>
+                                        <th>Model</th>
+                                        <th>PPL (↓)</th>
+                                        <th>Gen-PPL (↓)</th>
+                                        <th>Entropy (↑)</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr><td>AR (110M)</td><td>21.04</td><td>37.62</td><td>5.617</td></tr>
+                                    <tr><td>SEDD (110M)</td><td>23.87</td><td>98.41</td><td>5.586</td></tr>
+                                    <tr><td>MDLM (110M)</td><td>23.08</td><td>101.24</td><td>5.609</td></tr>
+
+                                    <tr><td>BFN (110M)</td><td>105.66</td><td>299.95</td><td>4.981</td></tr>
+
+                                    <tr class="has-background-light"><td><strong>SLM (110M)</strong></td><td><strong>53.90</strong></td><td><strong>65.59</strong></td><td><strong>5.494</strong></td></tr>
+                                    <tr class="has-background-light"><td><strong>SLM<sub>W</sub><sup>S</sup></strong></td><td><strong>43.25</strong></td><td><strong>53.79</strong></td><td><strong>5.618</strong></td></tr>
+
+                                    <tr class="has-background-light"><td><strong>SLM (460M)</strong></td><td><strong>39.01</strong></td><td><strong>55.07</strong></td><td><strong>5.508</strong></td></tr>
+                                    <tr class="has-background-light"><td><strong>SLM<sub>W</sub><sup>M</sup></strong></td><td><strong>37.32</strong></td><td><strong>39.39</strong></td><td><strong>5.587</strong></td></tr>
+                                    <tr class="has-background-light"><td><strong>SLM (1.7B)</strong></td><td><strong>36.75</strong></td><td><strong>43.52</strong></td><td><strong>5.550</strong></td></tr>
+                                    </tbody>
+                                </table>
+
+                                <p class="has-text-centered is-size-8 mb-2">
+                                    <strong>Performance on OpenWebText</strong>
+                                </p>
+                          
                                 </div>
+                            </div>
                         </div>
-                    </div>
-                
-                    <script>
-                        const datasets = [
-    {
-        "category": "Binario",
-        "image": "./assets/puzzles/binario.png",
-        "description": "Given a partially filled binary grid, determine its unique completion such that each row and column contains an equal number of 0s and 1s, no more than two identical digits are adjacent, and all rows and columns are pairwise distinct."
-    },
-    {
-        "category": "Campsite",
-        "image": "./assets/puzzles/campsite.png",
-        "description": "Given a grid with designated tree cells and empty cells, place tents on empty cells such that each tent is orthogonally adjacent to exactly one tree, no two tents are adjacent (including diagonally), and the number of tents in each row and column matches the specified totals."
-    },
-    {
-        "category": "Magic Square",
-        "image": "./assets/puzzles/magic_square.png",
-        "description": "Complete the partially filled N×N magic square by assigning distinct integers to the empty cells such that all rows, columns, and both main diagonals sum to magic number, while preserving the given entries and satisfying all structural constraints."
-    },
-    {
-        "category": "Skyscraper",
-        "image": "./assets/puzzles/skyscrapper.png",
-        "description": "Given an N×N grid, assign each cell a unique building height from 1 to N per row and column, such that the number of visible buildings from each edge matches the provided visibility constraints, with taller buildings obscuring shorter ones. Return a valid configuration or report infeasibility."
-    },
-    {
-        "category": "Sum Skyscraper",
-        "image": "./assets/puzzles/sum_skyscraper.png",
-        "description": "Given an N X N grid, fill it with numbers 1 to N without repetition in any row or column, such that from each edge, the sum of visible building heights—where taller buildings block shorter ones behind—is equal to the corresponding clue."
-    },
-    {
-        "category": "Star Battle",
-        "image": "./assets/puzzles/star_battle.png",
-        "description": "Given an N×N grid composed of empty cells and blocked cells, place exactly one star in each row and each column such that stars occupy only empty cells and no two stars are adjacent horizontally, vertically, or diagonally."
-    },
-    {
-        "category": "Sudoku2",
-        "image": "./assets/puzzles/sudoku2.png",
-        "description": "Given a partially filled 4×4 Sudoku grid with digits 1–4, fill in the remaining cells so that each row, column, and 2×2 subgrid contains each digit exactly once."
-    },
-    {
-        "category": "Sudoku",
-        "image": "./assets/puzzles/sudoku.png",
-        "description": "Given a partially filled 9×9 Sudoku grid, complete it so that each row, column, and 3×3 subgrid contains the digits 1 through 9 exactly once."
-    },
-    {
-        "category": "Full Crosswords",
-        "image": "./assets/puzzles/crosswords.png",
-        "description": "Given a fixed crossword grid with blank and blocked cells, fill all blank cells with letters to form valid English words that satisfy the provided across and down clues, ensuring consistency at intersections."
-    },
-    {
-        "category": "Symbolic Hard",
-        "image": "./assets/puzzles/symbolic_hard.png",
-        "description": "Given a symbolic 2D grid of numbers, learn the transformation rule across rows and apply it to generate the consistent output pattern, preserving vertical segment structures and alternating 0s in specific column bands."
-    },
-    {
-        "category": "Crypto KKA",
-        "image": "./assets/puzzles/KKA.png",
-        "description": "Known Key Attack-style Decryption. Given an encrypted ciphertext and the specification of an encryption method (e.g., Caesar, Vigenère, Hill, etc.), recover the original plaintext without being given the encryption algorithm or decryption procedure. The task requires understanding of classical ciphers and applying the correct decryption logic based on the cipher name and parameter settings."
-    },
-    {
-        "category": "Crypto KPA",
-        "image": "./assets/puzzles/KPA.png",
-        "description": "Known Plaintext Attack-style Decryption. Given a ciphertext and a plaintext-ciphertext example pair only, reverse-engineer the encryption transformation—without being given the algorithmic rule or key—and apply the inferred pattern to decrypt the target ciphertext. The task involves cryptanalytic generalization: learning a transformation from a single annotated example, and applying it to unseen input."
-    },
-    {
-        "category": "Twiddle",
-        "image": "./assets/puzzles/twiddle.png",
-        "description": "Given an NXN grid of distinct numbers from 1 to n², restore it to row-major order using a sequence of counterclockwise kxk subgrid rotations, each specified by its top-left coordinate."
-    },
-    {
-        "category": "Car Painting",
-        "image": "./assets/puzzles/car_painting.png",
-        "description": "Given a fixed initial sequence of cars to be painted, each car may be moved up to K positions forward or backward; the objective is to reorder the cars, within this constraint, to minimize adjacent color transitions (color switches)."
-    },
-    {
-        "category": "Stack Permutation",
-        "image": "./assets/puzzles/stack_permutation.png",
-        "description": "Given an input sequence, determine whether a target output sequence can be produced using a stack with only push (in order) and pop operations, ensuring last-in-first-out (LIFO) behavior."
-    },
-    {
-        "category": "Big Bench Symbolic",
-        "image": "./assets/puzzles/symbolic.png",
-        "description": "Given a sequence of input-output list pairs, identify and apply the underlying symbolic transformation function to a new input list to produce its corresponding output."
-    },
-    {
-        "category": "Eight Puzzle",
-        "image": "./assets/puzzles/eight_puzzle.png",
-        "description": "Given a 3×3 grid representing an 8-puzzle state, output the shortest sequence of moves (Up, Down, Left, Right) to reach the goal configuration [[1, 2, 3], [4, 5, 6], [7, 8, 0]], or indicate if no solution exists."
-    },
-    {
-        "category": "Fifteen Puzzle",
-        "image": "./assets/puzzles/15_puzzle.png",
-        "description": "Given a 4×4 grid representing a 15-puzzle state, output the shortest sequence of moves (U, D, L, R) to reach the goal configuration [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]], or report if no solution exists."
-    },
-    {
-        "category": "Nine Puzzle",
-        "image": "./assets/puzzles/nine.png",
-        "description": "Given a 3×3 grid of numbers 1–9, the player can circularly shift any row or column by 1 or 2 positions. Determine a sequence of moves that results in the grid sorted in ascending order, or report that it is unsolvable."
-    },
-    {
-        "category": "Sixteen Puzzle",
-        "image": "./assets/puzzles/sixteen.png",
-        "description": "Given a 4×4 grid containing tiles numbered 1–16, players may circularly shift any row or column by 1 to 3 positions to sort the grid into ascending order; determine a valid move sequence or prove it unsolvable."
-    },
-    {
-        "category": "Hitori",
-        "image": "./assets/puzzles/hitori.png",
-        "description": "Given an NxN grid of numbers, black out cells to ensure each row and column contains no duplicate numbers, no two blacked cells are orthogonally adjacent, and all remaining white cells form a single connected group."
-    },
-    {
-        "category": "Kakurasu",
-        "image": "./assets/puzzles/kakurasu.png",
-        "description": "Given a grid with row and column sum constraints, select black cells such that the sum of their positions in each row and column equals the respective targets, where each cell’s value is its 1-based index."
-    },
-    {
-        "category": "Light Up",
-        "image": "./assets/puzzles/light_up.png",
-        "description": "Given a rectangular grid with black numbered and un-numbered cells, place bulbs on empty cells to illuminate all white cells without lighting another bulb, ensuring each numbered black cell has exactly that many adjacent bulbs."
-    },
-    {
-        "category": "Minesweeper",
-        "image": "./assets/puzzles/mine.png",
-        "description": "Given a partially revealed Minesweeper grid, identify all unrevealed cells that must contain mines, based solely on the numerical clues and adjacency constraints."
-    },
-    {
-        "category": "Slant",
-        "image": "./assets/puzzles/slant.png",
-        "description": "Given a grid with numeric constraints at intersections, assign diagonal slashes(two directions) to each cell such that intersection counts are satisfied and no loops are formed."
-    },
-    {
-        "category": "Checkmate in One",
-        "image": "./assets/puzzles/checkmate_in_one.png",
-        "description": "Given a legal board configuration, find a move that results in immediate checkmate—i.e., the opposing king is placed in check and has no legal way to escape."
-    },
-    {
-        "category": "Tic Tac Toe",
-        "image": "./assets/puzzles/tic_tac_toe.png",
-        "description": "Given a partially filled N×N Tic Tac Toe board and the active player, identify the optimal move that maximizes the player’s winning chances or prevents immediate loss, according to standard game rules."
-    },
-    {
-        "category": "Game24",
-        "image": "./assets/puzzles/24.png",
-        "description": "Given four to six integers, use each exactly once with +, –, ×, ÷, and parentheses to construct a valid expression that evaluates to 24."
-    },
-    {
-        "category": "Countdown",
-        "image": "./assets/puzzles/countdown.png",
-        "description": "Given five integers and a target value, form a valid arithmetic expression using each number exactly once and the operators (+, –, ×, ÷), such that all intermediate results are positive integers and the final result equals the target."
-    },
-    {
-        "category": "Hamiltonian Cycle",
-        "image": "./assets/puzzles/hamiltonian_cycle.png",
-        "description": "Given an undirected graph, determine whether a Hamiltonian cycle exists; if so, output one such cycle."
-    },
-    {
-        "category": "Hamiltonian Path",
-        "image": "./assets/puzzles/hamiltonian_path.png",
-        "description": "Given an undirected graph, determine whether a Hamiltonian path exists; if so, output one such path."
-    },
-    {
-        "category": "NL Navigation",
-        "image": "./assets/puzzles/nl_navi.png",
-        "description": "Given a spatial description of a road network among city landmarks, identify the shortest path from a designated starting point to the nearest landmark of a specified type."
-    },
-    {
-        "category": "Maze",
-        "image": "./assets/puzzles/maze.png",
-        "description": "Given a grid-based maze with designated start and end positions, the objective is to determine a valid path from start to end. Movement is restricted to the four cardinal directions (up, down, left, right), and traversal through blocked or impassable cells is not allowed."
-    },
-    {
-        "category": "Knights and Knaves",
-        "image": "./assets/puzzles/kk.png",
-        "description": "Given statements from individuals who are either knights (truthful) or knaves (lying), decide if a specific conclusion is logically entailed, contradicted, or undetermined."
-    },
-    {
-        "category": "FOLIO",
-        "image": "./assets/puzzles/FOLIO.png",
-        "description": "Given a set of premises, determine whether a conclusion logically follows from them."
-    },
-    {
-        "category": "Zebra Logic",
-        "image": "./assets/puzzles/zebra_logic.png",
-        "description": "Given a fixed table structure and a set of categorical items with positional or equality constraints, deduce a unique one-to-one assignment of all elements that satisfies all logical conditions without transposing rows and columns."
-    }
-];
-                
-                        const datasetsPerPage = 4; // 每页显示的数据集数量
-                        let currentPage = 0; // 当前页码 (0-indexed)
-                
-                        const totalDatasets = datasets.length;
-                        const totalPages = Math.ceil(totalDatasets / datasetsPerPage);
-                
-                        const totalPagesSpan = document.getElementById('total-pages');
-                        const currentPageIndexSpan = document.getElementById('current-page-index');
-                        const datasetDisplayArea = document.getElementById('dataset-display-area');
-                        const prevPageBtn = document.getElementById('prev-page-btn');
-                        const nextPageBtn = document.getElementById('next-page-btn');
-                
-                        // 初始化总页数显示
-                        totalPagesSpan.textContent = totalPages;
-                
-                        // 更新数据集显示内容的函数
-                        function updateDatasetDisplay() {
-                            // 清空当前显示区域
-                            datasetDisplayArea.innerHTML = '';
-                
-                            const startIndex = currentPage * datasetsPerPage;
-                            const endIndex = Math.min(startIndex + datasetsPerPage, totalDatasets);
-                
-                            // 如果当前页没有数据集，且不是第一页，则跳转到上一页
-                            if (startIndex >= totalDatasets && currentPage > 0) {
-                                currentPage--;
-                                updateDatasetDisplay();
-                                return;
-                            }
-                
-                            for (let i = startIndex; i < endIndex; i++) {
-                                const dataset = datasets[i];
-                
-                                // 创建单个数据集框的 HTML 结构
-                                const datasetBox = document.createElement('div');
-                                datasetBox.className = 'rounded-lg border shadow-sm overflow-hidden min-h-[250px] max-h-[350px] flex flex-col';
-                
-                                datasetBox.innerHTML = `
-                                    <div class="p-3 bg-gray-100 text-gray-800 text-sm font-medium flex items-center space-x-2 flex-shrink-0">
-                                        
-                                            <path d="M2 7v13a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H9l-2 2H4a2 2 0 0 0-2 2z"></path>
-                                            <path d="m3 3 4 4"></path>
-                                        </svg>
-                                        <span class="flex-1"><strong class="dataset-category">${dataset.category}</strong></span>
-                                    </div>
-                                    <div class="p-4 bg-white flex-1 overflow-y-auto flex flex-col items-center">
-                                        ${dataset.image ? `<img src="${dataset.image}" alt="${dataset.category}" class="max-h-[150px] max-w-full object-contain mb-2 rounded-md">` : ''}
-                                        <p class="text-gray-600 text-sm text-center whitespace-pre-wrap">${dataset.description || '暂无描述'}</p>
-                                    </div>
-                                `;
-                                datasetDisplayArea.appendChild(datasetBox);
-                            }
-                
-                            currentPageIndexSpan.textContent = currentPage + 1; // 更新当前页码显示
-                        }
-                
-                        // 绑定前进按钮点击事件
-                        nextPageBtn.addEventListener('click', () => {
-                            currentPage++;
-                            if (currentPage >= totalPages) {
-                                currentPage = 0; // 回到第一页
-                            }
-                            updateDatasetDisplay();
-                        });
-                
-                        // 绑定后退按钮点击事件
-                        prevPageBtn.addEventListener('click', () => {
-                            currentPage--;
-                            if (currentPage < 0) {
-                                currentPage = totalPages - 1; // 回到最后一页
-                            }
-                            updateDatasetDisplay();
-                        });
-                
-                        // 页面加载时显示第一页数据集
-                        updateDatasetDisplay();
-                    </script>
-                
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="section" id="eval">
-        <div class="container">
-            <div class="columns is-centered">
-                <div class="column is-10">
-                    <h2 class="title is-3">⚖️ Enigmata-Eval: Evaluating Logical Reasoning Capabilities</h2>
-                    <div class="content">
-                        <p>Enigmata-Eval is a comprehensive benchmark containing 4,758 puzzle instances across Easy, Medium, and Hard difficulty levels. Each task provides 50 instances per difficulty level where possible, with strict train-eval separation to prevent data leakage.</p>
-
-                        <p>📥 <strong>Download Enigmata-Eval</strong>: <a href="https://huggingface.co/datasets/BytedTsinghua-SIA/Enigmata-Eval">HuggingFace Dataset</a></p>
-                    
-         
 
                 
                 
@@ -526,7 +269,7 @@
         </div>
     </section>
     
-    <section class="section" id="model">
+    <section class="section" id="exp_dna">
         <div class="container">
             <div class="columns is-centered">
                 <div class="column is-10">
