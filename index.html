@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="description"
         content="ShortListing Model: A Streamlined Simplex Diffusion for Discrete Variable Generation" />
-    <meta name="keywords, puzzle, logical, reasoning, large lanuge model, LLM"
-        content="Enigmata" />
+    <meta name="keywords, discrete diffusion, simplex diffusion, shortlisting model, discrete variable generation"
+        content="ShortListing Model" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ShortListing Model: A Streamlined Simplex Diffusion for Discrete Variable Generation</title>
 
@@ -24,7 +24,7 @@
     <link rel="stylesheet" href="./css/overlap-fix.css" />
     <link rel="stylesheet" href="./css/spacing-fix.css" />
     <link rel="stylesheet" href="./css/author-affiliation-styles.css" />
-    <link rel="icon" href="./assets/doubao.png" type="image/png" />
+    <link rel="icon" href="./assets/gensi_logo_black_topdown.png    " type="image/png" />
     <!-- add page icon at 64 x 64-->
     <!-- <link rel="icon" type="image/png" href="./assets/re.png" sizes="256x256" /> -->
 
@@ -126,7 +126,7 @@
 
             <div class="columns is-centered">
                 <div class="column is-10">
-                    <h2 class="title is-3">Core Contribution</h2>
+                    <h2 class="title is-3">Core contribution</h2>
                     <div class="content">
                         <p>
                             We introduce the <strong>ShortListing Model (SLM)</strong>, a novel simplex-based diffusion model inspired by progressive candidate pruning. 
@@ -161,6 +161,20 @@
                         <p>
                             <strong><em style="color: #3a76ed">Combining the strengths of masked discrete diffusion and uniform discrete diffusion, SLM serves as simpler yet effective alternatives dealing with discrete variables with gradual information growth.</em></strong>
                         </p>
+
+                        <div class="columns is-centered">
+                            <div class="column is-12">
+                                <figure class="image is-16by4">
+                                    <img src="./assets/SLM_simplex.png" alt="simplex Image">
+                                    <figcaption class="has-text-centered mt-2">Pathological behavior of SLM on one simplex example</figcaption>
+                                </figure>
+                            </div>
+                        </div>
+
+
+                        <p>
+                            Additionally, SLM incorporates a flexible implementation of classifier-free guidance, enhancing unconditional generation performance.
+                        </p>
                     
 
                     </div>
@@ -175,7 +189,7 @@
         <div class="container">
             <div class="columns is-centered">
                 <div class="column is-10">
-                    <h2 class="title is-3">Strong Performance in Language Modeling</h2>
+                    <h2 class="title is-3">Strong performance in language modeling</h2>
                     <div class="content">
                         <p>SLM achieve strong performance among non-autoregressive methods on text8 and obtain competitive results on OpenWebText, where previous simplex-based approaches had difficulty generating reasonable outputs. </p> 
                             
@@ -272,132 +286,150 @@
     <section class="section" id="exp_dna">
         <div class="container">
             <div class="columns is-centered">
-                <div class="column is-10">
-                    <h2 class="title is-3">🤖 Enigmata-Model: The Training Recipe</h2>
-                    <div class="content">
-                        <p>Our training methodology follows a two-stage process designed to systematically build reasoning abilities: 
-                            (1) rejection fine-tuning to establish foundational reasoning patterns, and 
-                            (2) multi-task RL to develop general reasoning skills that transfer across diverse problem domains.</p>
-                    </div>
-                    <div class="content">
-                        <div
-                        style="background-color: #f8fafc; border-radius: 12px; border-left: 6px solid #3a76ed; padding: 1.2rem; margin-bottom: 1.5rem;">
-                            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
-                                <div style="display: flex; align-items: flex-start; gap: 0.8rem;"> 
-                                    <div
-                                        style="background-color: #3a76ed; color: white; padding: 0.4rem; border-radius: 50%; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; min-width: 2rem; height: 2rem;">
-                                        1
-                                    </div>
-                                    <div>
-                                        <p style="margin: 0; line-height: 1.4;"><strong>Rejection Fine-tuning:</strong>
-                                            This initial stage focuses on building foundational reasoning by fine-tuning the model with high-quality solutions from a balanced mix of math and puzzle problems, including ARC-AGI.</p>
-                                    </div>
-                                </div>
-                        
-                                <div style="display: flex; align-items: flex-start; gap: 0.8rem;">
-                                    <div
-                                        style="background-color: #3a76ed; color: white; padding: 0.4rem; border-radius: 50%; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; min-width: 2rem; height: 2rem;">
-                                        2
-                                    </div>
-                                    <div>
-                                    <p style="margin: 0; line-height: 1.4;"><strong>RL with Verifiable Puzzles:</strong> The model then undergoes reinforcement learning using VC-PPO, where an automated verifier for puzzles provides immediate rewards, enabling an automatic RL pipeline for puzzle reasoning.</p>
-                                    </div>
-                                </div>
+            <div class="column is-10">
+                <h2 class="title is-3">SLM excels at DNA sequence design</h2>
+                <div class="content">
+                <p>
+                    In DNA design tasks, our non-guided variants achieve state-of-the-art (SOTA) results.
+                    Furthermore, with classifier-free guidance, our model attains stronger performance
+                    while remaining less sensitive to hyperparameters.
+                </p>
+                </div>
 
-                                <div style="display: flex; align-items: flex-start; gap: 0.8rem;">
-                                    <div
-                                        style="background-color: #3a76ed; color: white; padding: 0.4rem; border-radius: 50%; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; min-width: 2rem; height: 2rem;">
-                                        3
-                                    </div>
-                                    <div>
-                                        <p style="margin: 0; line-height: 1.4;"><strong>Multi-task Training:</strong> To develop general and transferable logical reasoning, the training incorporates multi-task methods like Mix-training RL and Multi-stage RL, combining diverse puzzle types (Enigmata, ARC-AGI) with challenging mathematical problems (AIME) while maintaining a balanced ratio.</p>
-                                    </div>
-                                </div>                                
-                        </div>
-                    </div>
-                    </div>
-
-                    
-                    <div class="content">
-                        <h4>👀 Experimental Results</h4>
-                        <div class="content">
-                            <p>Our model, specifically the 32B parameter version, significantly outperforms most public models on Enigmata-Eval and ARC-AGI, showcasing enhanced general logical reasoning. This success stems from effective rejection fine-tuning (RFT) and multi-task RL strategies, which improve generalization while preserving existing math reasoning abilities.</p>
-                        </div>
-                        <figure>
-                            <img src="./assets/main_results_1.png" alt="A descriptive alt text for your image" style="width: 600px;">
-                            <figcaption style="color: gray;">Performance of reasoning, generic, and our trained LLMs on reasoning benchmarks</figcaption>
-                          </figure>
-                        
-                          <div class="content">
-                            <p>On Enigmata-Eval, our Qwen2.5-32B-Enigmata model excels in Crypto, Arithmetic, and Logic tasks, indicating strong rule-based reasoning. It also performs competitively in search tasks, though spatial and sequential categories remain challenging.</p>
-                        </div>
-
-                          <figure>
-                            <img src="./assets/main_results2.png" alt="A descriptive alt text for your image" style="width: 600px;">
-                            <figcaption style="color: gray;">Performance of reasoning LLMs, generic LLMs, and our trained LLMs on Enigmata-Eval</figcaption>
-                          </figure>
-
-                    </div>
-
-                    
-                    <div class="content">
-                        <h4>🌟 Generalization with Scaling: Free Lunch from Enigmata </h4>
-                    <div class="content">
-                        <p>Incorporating the <strong>Enigmata-Data</strong> synthetic puzzle dataset into large-scale model training, e.g., <a href="https://arxiv.org/abs/2504.13914">Seed1.5-Thinking</a>, surprisingly improving performance on challenging benchmarks like AIME and GPQA Diamond. This demonstrates an unexpected <strong>generalization benefit</strong> for advanced reasoning models.</p>
-                    </div>
-
-                      <figure>
-                        <img src="./assets/seed_thinking.png" alt="A descriptive alt text for your image" style="width: 600px;">
-                        <figcaption style="color: gray;">Results on benchmarks for general reasoning capabilities</figcaption>
-                      </figure>
+                <!-- Two-column layout for the tables -->
+                <div class="columns mt-5">
+                <!-- Left Table -->
+                <div class="column is-6">
+                    <div class="table-container">
+                    <table class="table is-bordered is-fullwidth is-striped is-narrow has-text-centered is-vcentered">
+                        <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>MSE (↓)</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr><td>Bit Diffusion (bit enc)</td><td>0.041</td></tr>
+                        <tr><td>BFN</td><td>0.0405±0.0003</td></tr>
+                        <tr><td>Bit Diffusion (one-hot)</td><td>0.040</td></tr>
+                        <tr><td>D3PM-uniform</td><td>0.038</td></tr>
+                        <tr><td>DDSM</td><td>0.033</td></tr>
+                        <tr><td>Language Model</td><td>0.034±0.001</td></tr>
+                        <tr><td>Dirichlet FM</td><td>0.034±0.004</td></tr>
+                        <tr><td>Fisher-Flow</td><td>0.029±0.001</td></tr>
+                        <tr class="has-background-light"><td><strong>SLM</strong></td><td><strong>0.0265±0.0006</strong></td></tr>
+                        </tbody>
+                    </table>
+                    <p class="has-text-centered is-size-6 mb-2">
+                        <strong>Conditional generation over DNA promoter design</strong>
+                    </p>
                     </div>
                 </div>
-            </div>
-        </div>
+
+                <!-- Right Table -->
+                <div class="column is-6">
+                    <div class="table-container">
+                    <table class="table is-bordered is-fullwidth is-striped is-narrow has-text-centered is-vcentered">
+                        <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Mel FBD (↓)</th>
+                            <th>FB FBD (↓)</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr><td>Random</td><td>619.0±0.8</td><td>832.4±0.3</td></tr>
+                        <tr><td>Language Model</td><td>35.4±0.5</td><td>25.7±1.0</td></tr>
+                        <tr><td>Fisher-Flow</td><td>27.5±2.6</td><td>3.8±0.3</td></tr>
+                        <tr><td>Dirichlet FM</td><td>5.3±0.5</td><td>15.1±0.4</td></tr>
+                        <tr><td>BFN</td><td>3.3±0.1</td><td>10.8±0.6</td></tr>
+                        <tr class="has-background-light"><td><strong>SLM</strong></td><td><strong>2.2±0.1</strong></td><td><strong>4.4±0.2</strong></td></tr>
+
+                        <tr><td>BFN CFG</td><td>2.3±0.1</td><td>2.3±0.2</td></tr>
+                        <tr><td>Dirichlet FM CFG</td><td>1.9±0.4</td><td>1.0±0.3</td></tr>
+                        <tr class="has-background-light"><td><strong>SLM CFG</strong></td><td><strong>1.4±0.1</strong></td><td><strong>1.0±0.1</strong></td></tr>
+                        </tbody>
+                    </table>
+                    <p class="has-text-centered is-size-6 mb-2">
+                        <strong>FBD metric for DNA enhancer generation</strong>
+                    </p>
+                    </div>
+                </div>
+                </div> <!-- end .columns -->
+
+            </div> <!-- end .column.is-10 -->
+            </div> <!-- end .columns.is-centered -->
+        </div> <!-- end .container -->
     </section>
 
 
-    <!-- <section class="section">
+    <section class="section" id="exp_protein">
         <div class="container">
             <div class="columns is-centered">
-                <div class="column is-10">
-                    <h2 class="title is-3">Performance Results</h2>
-                    <div class="content">
-                        
-                       
-                            
-                        <div class="content">
-                            <p>Our model, specifically the 32B parameter version, significantly outperforms most public models on Enigmata-Eval and ARC-AGI, showcasing enhanced general logical reasoning. This success stems from effective rejection fine-tuning (RFT) and multi-task RL strategies, which improve generalization while preserving existing math reasoning abilities.</p>
-                        </div>
-                        <figure>
-                            <img src="./assets/main_results_1.png" alt="A descriptive alt text for your image" style="width: 600px;">
-                            <figcaption style="color: gray;">Performance of reasoning, generic, and our trained LLMs on reasoning benchmarks</figcaption>
-                          </figure>
-                        
-                          <div class="content">
-                            <p>On Enigmata-Eval, our Qwen2.5-32B-Enigmata model excels in Crypto, Arithmetic, and Logic tasks, indicating strong rule-based reasoning. It also performs competitively in search tasks, though spatial and sequential categories remain challenging.</p>
-                        </div>
+            <div class="column is-10">
+                <h2 class="title is-3">SLM derives proteins with robost properties</h2>
 
-                          <figure>
-                            <img src="./assets/main_results2.png" alt="A descriptive alt text for your image" style="width: 600px;">
-                            <figcaption style="color: gray;">Performance of reasoning LLMs, generic LLMs, and our trained LLMs on Enigmata-Eval</figcaption>
-                          </figure>
-
-                          <div class="content">
-                            <p>Incorporating the <strong>Enigmata-Data</strong> synthetic puzzle dataset into large-scale model training significantly boosts general reasoning, including math and STEM, surprisingly improving performance on challenging benchmarks like AIME and GPQA Diamond. This demonstrates an unexpected <strong>generalization benefit</strong> for advanced reasoning models.</p>
-                        </div>
-
-                          <figure>
-                            <img src="./assets/seed_thinking.png" alt="A descriptive alt text for your image" style="width: 600px;">
-                            <figcaption style="color: gray;">Results on benchmarks for general reasoning capabilities</figcaption>
-                          </figure>
-
-
+                <div class="columns is-centered">
+                    <div class="column is-12">
+                        <figure class="image is-16by4">
+                            <img src="./assets/protein_vis.png" alt="Protein Vis Image">
+                            <figcaption class="has-text-centered mt-2">SLM design space under ProstT5 embeddings</figcaption>
+                        </figure>
                     </div>
                 </div>
+
+                <div class="content">
+                <p>
+                    our 38M-parameter SLM can design proteins with enhanced foldability, fitness, self-consistency and diversity, surpassing the larger, well-known ESM2-150M model. Thus demonstrating strong generalization and robustness under restricted vocabularies and complex data distributions.
+                </p>
+                </div>
+
+                <div class="columns is-centered">
+                    <div class="column is-12">
+                        <figure class="image is-16by4">
+                            <img src="./assets/protein_main.png" alt="Protein Main Image">
+                            <figcaption class="has-text-centered mt-2">Quantitative Performance on Protein Sequence Design SLM compared to baselines</figcaption>
+                        </figure>
+                    </div>
+                </div>
+
+                
+                
+
+            </div> <!-- end .column.is-10 -->
+            </div> <!-- end .columns.is-centered -->
+        </div> <!-- end .container -->
+    </section>
+
+
+
+    <section class="section" id="sample_vis">
+    <div class="container">
+        <div class="columns is-centered">
+            <div class="column is-10">
+                <h2 class="title is-3">Visualization of SLM's sampling process</h2>
+
+                <div class="columns is-centered">
+                    <div class="column is-12">
+                        <figure class="image is-16by4">
+                            <img src="./assets/heatmap_1.png" alt="Heatmap Image 1">
+                        </figure>
+                    </div>
+                </div>
+
+                <div class="columns is-centered">
+                    <div class="column is-12">
+                        <figure class="image is-16by4">
+                            <img src="./assets/heatmap_2.png" alt="Heatmap Image 2">
+                        </figure>
+                    </div>
+                </div>
+
             </div>
         </div>
-    </section> -->
+    </div>
+    </section>
+
 
     <section class="section" id="citation">
         <div class="container">
@@ -407,12 +439,12 @@
                     <div class="content">
                         <p>If you find this work useful, please cite our paper:</p>
                         <pre><code class="latex">
-@article{chen2025enigmata,
+<!-- @article{chen2025enigmata,
     title={Enigmata: Scaling Logical Reasoning in Large Language Models with Synthetic Verifiable Puzzles},
     author={Chen, Jiangjie and He, Qianyu and Yuan, Siyu and Chen, Aili and Cai, Zhicheng and Dai, Weinan and Yu, Hongli and Yu, Qiying and Li, Xuefeng and Chen, Jiaze and others},
     journal={arXiv preprint arXiv:2505.19914},
     year={2025}
-}
+} -->
                         </code></pre>
                     </div>
                 </div>
