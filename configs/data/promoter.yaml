@@ -1,0 +1,6 @@
+train: promoter
+valid: promoter
+tokenizer_name_or_path: promoter
+cache_dir: cache/promoter
+wrap: True
+streaming: False

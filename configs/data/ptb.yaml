@@ -1,0 +1,6 @@
+train: ptb
+valid: ptb
+tokenizer_name_or_path: /home/tokenizer/gpt2_tokenizer
+cache_dir: /home/data/text_diffusion
+wrap: True
+streaming: False

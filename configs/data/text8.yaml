@@ -1,0 +1,11 @@
+# TODO: When using this dataset, set model.length = 256 to match D3PM setup
+train: text8
+valid: text8
+tokenizer_name_or_path: text8
+cache_dir: /data/text8
+wrap: True
+streaming: False
+extra: 
+  bucket_size: None
+  max_tokens: None
+  max_batch_size: None

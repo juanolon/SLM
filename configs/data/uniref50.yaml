@@ -1,0 +1,12 @@
+# TODO: When using this dataset, set model.length = 256 to match D3PM setup
+train: uniref50
+valid: uniref50
+tokenizer_name_or_path: uniref50
+cache_dir: /AIRvePFS/ai4science/users/yupei/data/uniref50/
+wrap: True
+streaming: False
+extra:
+  bucket_size: 1000
+  max_tokens: 40000
+  max_batch_size: 800
+  valid_subsample_rate: 83

@@ -1,0 +1,12 @@
+__pycache__/
+
+# generated file
+experiments/
+
+examples/
+outputs/
+
+# wheels
+causal_conv1d-1.5.0.post8+cu11torch2.1cxx11abiFALSE-cp39-cp39-linux_x86_64.whl
+flash_attn-2.7.2.post1+cu11torch2.1cxx11abiFALSE-cp39-cp39-linux_x86_64.whl
+mamba_ssm-2.2.4+cu11torch2.1cxx11abiFALSE-cp39-cp39-linux_x86_64.whl

@@ -1,0 +1,7 @@
+train: Mel
+valid: Mel
+tokenizer_name_or_path: Mel
+cache_dir: cache/Mel
+wrap: True
+streaming: False
+mel_enhancer: False
