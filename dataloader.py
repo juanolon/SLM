@@ -723,6 +723,8 @@ def get_dataloaders(config, tokenizer, skip_train=False,
                     skip_valid=False, valid_seed=None,  val_on_test=False):
   num_gpus = torch.cuda.device_count()
 
+  print(f"{config.loader.global_batch_size} ?= {config.loader.batch_size} * {config.trainer.num_nodes} * {num_gpus} * {config.trainer.accumulate_grad_batches}")
+
   assert (config.loader.global_batch_size
           == (config.loader.batch_size
               * config.trainer.num_nodes
@@ -748,11 +750,11 @@ def get_dataloaders(config, tokenizer, skip_train=False,
       train_set = UniRefDataset(config.data.cache_dir, 'train', structure=False)
       train_set = WrappedUniRefDataset(train_set, tokenizer, config.model.length)
     elif config.data.train == 'FB':
-      train_set = EnhancerDataset('FB', split='train')
+      train_set = EnhancerDataset('FB', config.data.cache_dir, split='train')
     elif config.data.train == 'Mel':
-      train_set = EnhancerDataset('Mel', split='train')
+      train_set = EnhancerDataset('Mel', config.data.cache_dir, split='train')
     elif config.data.train == 'promoter':
-      train_set = PromoterDataset(n_tsses=100000, rand_offset=10, split='train')
+      train_set = PromoterDataset(config.data.cache_dir, n_tsses=100000, rand_offset=10, split='train')
     else:
       train_set = get_dataset(
         config.data.train,
@@ -782,19 +784,19 @@ def get_dataloaders(config, tokenizer, skip_train=False,
         valid_set = WrappedUniRefDataset(valid_set, tokenizer, config.model.length)
     elif config.data.valid == 'FB':
       if not val_on_test:
-        valid_set = EnhancerDataset('FB', split='valid')
+        valid_set = EnhancerDataset('FB', config.data.cache_dir, split='valid')
       else:
-        valid_set = EnhancerDataset('FB', split='test')
+        valid_set = EnhancerDataset('FB', config.data.cache_dir, split='test')
     elif config.data.valid == 'Mel':
       if not val_on_test:
-        valid_set = EnhancerDataset('Mel', split='valid')
+        valid_set = EnhancerDataset('Mel', config.data.cache_dir, split='valid')
       else:
-        valid_set = EnhancerDataset('Mel', split='test')
+        valid_set = EnhancerDataset('Mel', config.data.cache_dir, split='test')
     elif config.data.valid == 'promoter':
       if not val_on_test:
-        valid_set = PromoterDataset(n_tsses=100000, rand_offset=0, split='valid')
+        valid_set = PromoterDataset(config.data.cache_dir, n_tsses=100000, rand_offset=0, split='valid')
       else:
-        valid_set = PromoterDataset(n_tsses=100000, rand_offset=0, split='test')
+        valid_set = PromoterDataset(config.data.cache_dir, n_tsses=100000, rand_offset=0, split='test')
     else:
       valid_set = get_dataset(
         config.data.valid,

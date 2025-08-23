@@ -45,18 +45,25 @@ Download [dataset](https://zenodo.org/records/10184648) and organize files like 
   | DeepFlyBrain_data.pkl
 ```
 
+after unzip, two .pkl file are under `General/data`
+
+Then set dna_data dir to file `./configs/data/Mel.yaml`: cache_dir and `./configs/data/FB.yaml`: cache_dir
+
+
 #### DNA Promoter Dataset
 Download [dataset](https://zenodo.org/records/7943307) and organize files like that:
 ```bash
 ---promoter_design
-  | ._agg.minus.bw.bedgraph.bw.gz
-  | ._agg.plus.bw.bedgraph.bw.gz
+  | .agg.minus.bw.bedgraph.bw
+  | .agg.plus.bw.bedgraph.bw
   ...
   ...
   | Homo_sapiens.GRCh38.dna.primary_assembly.fa.fai
   | Homo_sapiens.GRCh38.dna.primary_assembly.fa.mmap
+  | target.sei.names
 ```
 
+tips: you need to gunzip .gz files in raw dir.
 
 #### GPT2 Model
 GPT2 are only used for evaluation, download [gpt2-large](https://huggingface.co/openai-community/gpt2-large/tree/main) and report dir to `./configs/config.yaml`:eval.gen_ppl_eval_model_name_or_path

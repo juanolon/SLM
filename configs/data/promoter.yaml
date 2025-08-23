@@ -1,6 +1,6 @@
 train: promoter
 valid: promoter
 tokenizer_name_or_path: promoter
-cache_dir: cache/promoter
+cache_dir: /AIRvePFS/ai4science/users/yupei/data/promoter_design/
 wrap: True
 streaming: False

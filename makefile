@@ -83,7 +83,7 @@ train_promoter:
 		T=1000 \
 		trainer.val_check_interval=100 \
 		loader.global_batch_size=128 \
-		trainer.devices=1 \
+		trainer.devices=1; \
 
 train_fb:
 	python main.py \
@@ -101,11 +101,11 @@ train_fb:
  		loader.global_batch_size=128 \
 		trainer.val_check_interval=500 \
 		gamma=0 \
-		trainer.devices=1 \
+		trainer.devices=1; \
 
 sample_fb:
 	$(eval CKPT_PATH:=/AIRvePFS/ai4science/users/yupei/test_slm_repo/ckpt/FB_best.ckpt)
-# 	$(eval OUTPUT_DIR:=/AIRvePFS/ai4science/users/yupei/test_slm_repo/output/output_fb)
+	$(eval OUTPUT_DIR:=/AIRvePFS/ai4science/users/yupei/test_slm_repo/output/output_fb)
 	python main.py \
 		model=small \
 		data=FB \
@@ -114,11 +114,14 @@ sample_fb:
 		model.length=500 \
 		eval.compute_generative_perplexity=False \
 		sampling.steps=200 \
+		sampling.outdir=${OUTPUT_DIR} \
+		loader.global_batch_size=32 \
 		training.different_time=True \
 		training.onehot_sparse=True \
 		mode=eval \
 		eval.checkpoint_path=${CKPT_PATH} \
-		gamma=2.7; \
+		gamma=2.7 \
+		trainer.devices=1; \
 
 
 train_mel:
@@ -137,7 +140,7 @@ train_mel:
  		loader.global_batch_size=128 \
 		trainer.val_check_interval=100 \
 		gamma=0 \
-		trainer.devices=1 \
+		trainer.devices=1; \
 
 sample_mel:
 	$(eval CKPT_PATH:=/AIRvePFS/ai4science/users/yupei/test_slm_repo/ckpt/Mel_best.ckpt)

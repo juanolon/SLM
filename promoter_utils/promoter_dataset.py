@@ -4,6 +4,7 @@ import numpy as np
 import pyBigWig
 import tabix
 from selene_sdk.targets import Target
+import os
 
 from promoter_utils.selene_utils import MemmapGenome
 
@@ -73,24 +74,24 @@ class GenomicSignalFeatures(Target):
             wigmat[np.isnan(wigmat)] = 0
         return wigmat
 class PromoterDataset(torch.utils.data.Dataset):
-    def __init__(self, seqlength=1024, split="train", n_tsses=100000, rand_offset=0):
+    def __init__(self, data_dir, seqlength=1024, split="train", n_tsses=100000, rand_offset=0):
         self.shuffle = False
 
         class ModelParameters:
-            seifeatures_file = 'promoter_design/target.sei.names'
-            seimodel_file = 'promoter_design/best.sei.model.pth.tar'
+            seifeatures_file =  os.path.join(data_dir, 'target.sei.names')
+            seimodel_file = os.path.join(data_dir, 'best.sei.model.pth.tar')
 
-            ref_file = 'promoter_design/Homo_sapiens.GRCh38.dna.primary_assembly.fa'
-            ref_file_mmap = 'promoter_design/Homo_sapiens.GRCh38.dna.primary_assembly.fa.mmap'
-            tsses_file = 'promoter_design/FANTOM_CAT.lv3_robust.tss.sortedby_fantomcage.hg38.v4.tsv'
+            ref_file = os.path.join(data_dir, 'Homo_sapiens.GRCh38.dna.primary_assembly.fa') 
+            ref_file_mmap = os.path.join(data_dir, 'Homo_sapiens.GRCh38.dna.primary_assembly.fa.mmap') 
+            tsses_file = os.path.join(data_dir, 'FANTOM_CAT.lv3_robust.tss.sortedby_fantomcage.hg38.v4.tsv')  
 
             fantom_files = [
-                "/promoter_design/agg.plus.bw.bedgraph.bw",
-                "/data/promoter_design/agg.minus.bw.bedgraph.bw"
+                os.path.join(data_dir, "agg.plus.bw.bedgraph.bw"),
+                os.path.join(data_dir, "agg.minus.bw.bedgraph.bw") 
             ]
             fantom_blacklist_files = [
-                "/data/promoter_design/fantom.blacklist8.plus.bed.gz",
-                "/data/promoter_design/fantom.blacklist8.minus.bed.gz"
+                os.path.join(data_dir, "fantom.blacklist8.plus.bed.gz"),
+                os.path.join(data_dir, "fantom.blacklist8.minus.bed.gz")
             ]
 
             n_time_steps = 400

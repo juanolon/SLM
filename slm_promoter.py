@@ -537,12 +537,14 @@ class Diffusion(L.LightningModule):
 
   def validation_step(self, batch, batch_idx):
     loss, rec = self._compute_loss(batch, prefix='val')
-    self.val_outputs['loss'].append(loss)
+    self.val_outputs['loss'].append(loss) 
 
-    seifeatures = pd.read_csv('/data/promoter_design/target.sei.names', sep='|', header=None)
+    
+
+    seifeatures = pd.read_csv(os.path.join(self.config.data.cache_dir, 'target.sei.names'), sep='|', header=None)
     sei = NonStrandSpecific(Sei(4096, 21907))
     sei.load_state_dict(upgrade_state_dict(
-        torch.load('f/data/promoter_design/best.sei.model.pth.tar', map_location='cpu')['state_dict'],
+        torch.load(os.path.join(self.config.data.cache_dir, 'best.sei.model.pth.tar'), map_location='cpu')['state_dict'],
         prefixes=['module.']))
     sei = sei.to(self.device)
 
