@@ -93,3 +93,14 @@ Run `make sample_uniref50` to sample protein sequences.
 
 
 Run `make sample_fb` and `make sample_mel` to sample dna enhancer sequences.
+
+
+## Reference
+```bash
+@article{song2025shortlisting,
+  title={ShortListing Model: A Streamlined SimplexDiffusion for Discrete Variable Generation},
+  author={Song, Yuxuan and Zhang, Zhe and Pei, Yu and Gong, Jingjing and Yu, Qiying and Zhang, Zheng and Wang, Mingxuan and Zhou, Hao and Liu, Jingjing and Ma, Wei-Ying},
+  journal={arXiv preprint arXiv:2508.17345},
+  year={2025}
+}
+```
