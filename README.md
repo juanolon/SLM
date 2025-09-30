@@ -1,4 +1,5 @@
 # SLM: ShortList Model
+🏆 Update (2025.9): Our paper [ShortListing Model: A Streamlined Simplex Diffusion for Discrete Variable Generation](https://openreview.net/forum?id=ZAu7sADxfh) has been accepted at NeurIPS 2025!
 Implementation of ShortList Model and its applications.
 
 
