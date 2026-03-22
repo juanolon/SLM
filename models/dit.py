@@ -362,7 +362,7 @@ class DIT(nn.Module, huggingface_hub.PyTorchModelHubMixin):
 
     rotary_cos_sin = self.rotary_emb(x)
 
-    with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+    with torch.cuda.amp.autocast(dtype=torch.float16):
       for i in range(len(self.blocks)):
         x = self.blocks[i](x, rotary_cos_sin, c, seqlens=None)
       x = self.output_layer(x, c)

@@ -1,7 +1,7 @@
 train: FB
 valid: FB
 tokenizer_name_or_path: FB
-cache_dir: /AIRvePFS/ai4science/users/yupei/data/dna_data/
+cache_dir: data/dna_data
 wrap: True
 streaming: False
 mel_enhancer: False
