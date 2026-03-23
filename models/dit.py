@@ -262,17 +262,43 @@ class DDiTBlock(nn.Module):
       cos, sin = rotary_cos_sin
       qkv = apply_rotary_pos_emb(
         qkv, cos.to(qkv.dtype), sin.to(qkv.dtype))
-    qkv = rearrange(qkv, 'b s ... -> (b s) ...')
-    if seqlens is None:
-      cu_seqlens = torch.arange(
-        0, (batch_size + 1) * seq_len, step=seq_len,
-        dtype=torch.int32, device=qkv.device)
-    else:
-      cu_seqlens = seqlens.cumsum(-1)
-    x = flash_attn.flash_attn_interface.flash_attn_varlen_qkvpacked_func(
-      qkv, cu_seqlens, seq_len, 0., causal=False)
+
+    # flash-attn
+    # qkv = rearrange(qkv, 'b s ... -> (b s) ...')
+    # if seqlens is None:
+    #   cu_seqlens = torch.arange(
+    #     0, (batch_size + 1) * seq_len, step=seq_len,
+    #     dtype=torch.int32, device=qkv.device)
+    # else:
+    #   cu_seqlens = seqlens.cumsum(-1)
+    # x = flash_attn_triton.flash_attn_interface.flash_attn_varlen_qkvpacked_func(
+    #   qkv, cu_seqlens, seq_len, 0., causal=False)
+    # 
+    # x = rearrange(x, '(b s) h d -> b s (h d)', b=batch_size)
+
+    # START attention
+    if seqlens is not None:
+        print(f"TODO: seqlens have been disabled")
+
+    # Instead of flattening to (B*S), we stay in Batch mode.
+    q, k, v = qkv.unbind(dim=2)  # q, k, v each: (B, S, H, D)
     
-    x = rearrange(x, '(b s) h d -> b s (h d)', b=batch_size)
+    # SDPA expects (Batch, Heads, SeqLen, HeadDim)
+    q = q.transpose(1, 2)
+    k = k.transpose(1, 2)
+    v = v.transpose(1, 2)
+
+    # pytorch replacement for flash_attn_varlen_qkvpacked_func.
+    x = F.scaled_dot_product_attention(
+        q, k, v,
+        attn_mask=None, # For text8, usually no mask is needed
+        dropout_p=self.dropout if self.training else 0.0,
+        is_causal=False # Set to True if your model is Autoregressive
+    )
+
+    # 7. Restore shape: (B, H, S, D) -> (B, S, H*D)
+    x = x.transpose(1, 2).reshape(batch_size, seq_len, -1)
+    # END attention
 
     x = bias_dropout_scale_fn(self.attn_out(x),
                               None,

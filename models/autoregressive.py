@@ -1,6 +1,7 @@
 import math
 import typing
 
+import flash_attn_triton
 import flash_attn
 import flash_attn.layers.rotary
 import huggingface_hub
@@ -221,7 +222,7 @@ class DDiTBlock(nn.Module):
       )
     else:
       cu_seqlens = seqlens.cumsum(-1)
-    x = flash_attn.flash_attn_interface.flash_attn_varlen_qkvpacked_func(
+    x = flash_attn_triton.flash_attn_interface.flash_attn_varlen_qkvpacked_func(
       qkv, cu_seqlens, seq_len, 0.0, causal=self.causal
     )
 
