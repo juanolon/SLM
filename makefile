@@ -14,7 +14,7 @@ train_sudoku:
 		training.beta_bfn=0.75 \
 		checkpointing.resume_from_ckpt=False \
 		T=1000 \
-		loader.global_batch_size=128 \
+		loader.global_batch_size=1024 \
 		eval.new_diff_calculate=full \
 		trainer.devices=1 \
 

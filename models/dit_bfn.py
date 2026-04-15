@@ -152,8 +152,9 @@ class RotaryEmbedding2d(nn.Module):
         self.cos_cached = nn.Buffer(emb.cos(), persistent=False)
         self.sin_cached = nn.Buffer(emb.sin(), persistent=False)
 
-    def forward(self):
-        return self.cos_cached, self.sin_cached
+    def forward(self, x):
+        seq_len = x.shape[1]
+        return self.cos_cached[:seq_len], self.sin_cached[:seq_len]
 
 
 def rotate_half(x: torch.Tensor):
