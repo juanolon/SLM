@@ -1,0 +1,10 @@
+name: nano
+type: ddit
+hidden_size: 256
+cond_dim: 128
+length: 81
+n_blocks: 8
+n_heads: 8
+scale_by_sigma: True
+dropout: 0.1
+tie_word_embeddings: False

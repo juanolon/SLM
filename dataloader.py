@@ -180,7 +180,7 @@ class SudokuTokenizer(transformers.PreTrainedTokenizer):
     mask_token='[MASK]',
     unk_token='[UNK]',
     **kwargs):
-    self.characters = list('abcdefghijklmnopqrstuvwxyz ')
+    self.characters = list('123456789')
     self._vocab_str_to_int = {
       '[CLS]': 0,
       '[SEP]': 1,
@@ -202,13 +202,19 @@ class SudokuTokenizer(transformers.PreTrainedTokenizer):
       mask_token=mask_token,
       unk_token=unk_token,
       **kwargs)
-    
+
   @property
   def vocab_size(self) -> int:
     return len(self._vocab_str_to_int)
 
   def _tokenize(self, text: str, **kwargs) -> typing.List[str]:
-    return list(text.lower())
+    tokens = []
+    for char in text:
+        if char == '.':
+            tokens.append(self.mask_token)
+        else:
+            tokens.append(char)
+    return tokens
 
   def _convert_token_to_id(self, token: str) -> int:
     return self._vocab_str_to_int.get(
@@ -509,6 +515,34 @@ def get_text8_dataset(cache_dir, max_seq_length=256,
 
   return dataset
 
+def get_sudoku_dataset(cache_dir, val_size=10000):
+    _load_dir = f'{cache_dir}/sudoku'
+
+    if utils.fsspec_exists(_load_dir):
+            return datasets.load_from_disk(_load_dir)
+
+    raw_data = datasets.load_dataset("sapientinc/sudoku-extreme", cache_dir=cache_dir)
+
+    def prepare_data(batch):
+        return {
+            "text": batch["answer"],
+        }
+
+    dataset = raw_data.map(
+        prepare_data,
+        remove_columns=raw_data['train'].column_names,
+    )
+
+    train_val = dataset['train'].train_test_split(test_size=val_size, seed=42)
+
+    dataset_dict = datasets.DatasetDict({
+        'train': train_val['train'],
+        'validation': train_val['test'],
+        'test': dataset['test']
+    })
+
+    dataset_dict.save_to_disk(_load_dir)
+    return dataset_dict
 
 def _group_texts(examples, block_size, bos, eos):
   # Concatenate all texts.
@@ -582,6 +616,8 @@ def get_dataset(
   elif dataset_name == 'text8-crop':
     dataset = get_text8_dataset(
       cache_dir, max_seq_length=block_size, crop_train=True)
+  elif dataset_name == 'sudoku':
+    dataset = get_sudoku_dataset(cache_dir)
   elif dataset_name == 'uniref50':
     dataset = UniRefDataset(cache_dir, mode, structure=False)
     train_set = WrappedUniRefDataset(train_set, tokenizer, model.length)
@@ -738,6 +774,8 @@ def get_tokenizer(config):
     tokenizer = Tokenizer()
   elif config.data.tokenizer_name_or_path == 'text8':
     tokenizer = Text8Tokenizer()
+  elif config.data.tokenizer_name_or_path == 'sudoku':
+    tokenizer = SudokuTokenizer()
   elif config.data.tokenizer_name_or_path == 'bert-base-uncased':
     tokenizer = transformers.BertTokenizer.\
       from_pretrained('bert-base-uncased')
