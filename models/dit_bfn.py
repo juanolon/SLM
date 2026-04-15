@@ -368,6 +368,8 @@ class DDiTBlock(nn.Module):
         q, k, v = qkv.unbind(dim=2)  # q, k, v each: (B, S, H, D)
 
         cos, sin = rotary_cos_sin
+        cos = cos.unsqueeze(0)  # (1, S, H)
+        sin = sin.unsqueeze(0)  # (1, S, H)
         q, k = apply_rotary_pos_emb(q, k, cos, sin)
 
         # SDPA expects (Batch, Heads, SeqLen, HeadDim)
