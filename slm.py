@@ -619,6 +619,36 @@ class Diffusion(L.LightningModule):
       if self.config.eval.compute_generative_perplexity and self.trainer.global_rank ==0:
         wandb.log({'val/gen_ppl_epoch':ppl_value},self.global_step)
         wandb.log({'val/gen_kl_epoch':kl_value},self.global_step)
+
+
+      # log sudoku
+      if self.config.data.train == "text8":
+        valid_count = 0
+        total_violations = 0
+        formatted_data = []
+
+        for s in text_samples_collection:
+            is_valid, violations = check_sudoku_validity(s)
+            if is_valid:
+                valid_count += 1
+            total_violations += violations
+
+            pretty_grid = "\n".join([s[i:i+9] for i in range(0, 81, 9)])
+            formatted_data.append([pretty_grid, is_valid, violations])
+
+        validity_rate = valid_count / len(text_samples_collection)
+        avg_violations = total_violations / len(text_samples_collection)
+        
+        self.log('val/sudoku_validity_rate', validity_rate, sync_dist=True)
+        self.log('val/avg_rule_violations', avg_violations, sync_dist=True)
+
+        if self.trainer.global_rank == 0:
+            sampled_table = wandb.Table(
+                columns=['Grid View', 'Perfect', 'Violations'],
+                data=formatted_data
+            )
+            wandb.log({f'sudoku_samples_step_{self.global_step}': sampled_table})
+
     valid_dict = self.valid_metrics.compute()
     self.log_dict(valid_dict,on_step=False,on_epoch=True,sync_dist=True)
     valid_rec_dict = self.valid_recmetrics.compute()
@@ -1711,3 +1741,25 @@ class Diffusion(L.LightningModule):
     self.backbone.train()
     self.noise.train()
     return sampling_steps, samples, sequence_lengths
+
+
+def check_sudoku_validity(sample_str):
+    """Returns (is_valid, num_violations)"""
+    if len(sample_str) != 81 or not sample_str.isdigit():
+        return False, 81
+    
+    grid = [int(c) for c in sample_str]
+    rows = [grid[i*9:(i+1)*9] for i in range(9)]
+    cols = [[rows[r][c] for r in range(9)] for c in range(9)]
+    squares = []
+    for r in range(0, 9, 3):
+        for c in range(0, 9, 3):
+            squares.append([rows[i][j] for i in range(r, r+3) for j in range(c, c+3)])
+
+    violations = 0
+    for unit in rows + cols + squares:
+        # Check if unit contains exactly 1-9
+        if len(set(unit)) != 9 or any(x < 1 or x > 9 for x in unit):
+            violations += 1
+            
+    return violations == 0, violations
