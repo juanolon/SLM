@@ -26,6 +26,7 @@ from torch.utils.data import Sampler, BatchSampler
 import utils
 from promoter_utils.promoter_dataset import PromoterDataset
 from promoter_utils.enhancer_dataset import EnhancerDataset
+from datasets import Features, Value
 
 LOGGER = utils.get_logger(__name__)
 
@@ -537,7 +538,8 @@ def get_sudoku_dataset(cache_dir, val_size=10000):
     if utils.fsspec_exists(_load_dir):
         return datasets.load_from_disk(_load_dir)
 
-    raw_data = datasets.load_dataset("sapientinc/sudoku-extreme", cache_dir=cache_dir)
+    sudoku_features = Features({"answer": Value("string")})
+    raw_data = datasets.load_dataset("sapientinc/sudoku-extreme", cache_dir=cache_dir, features=sudoku_features)
 
     def prepare_data(batch):
         return {
