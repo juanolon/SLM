@@ -154,9 +154,11 @@ class Diffusion(L.LightningModule):
         self.parameterization = self.config.parameterization
         if self.config.backbone == "dit":
             from models import dit
+
             self.backbone = dit.DIT(self.config, vocab_size=self.vocab_size)
         elif self.config.backbone == "dimamba":
             from models import dimamba
+
             self.backbone = dimamba.DiMamba(
                 self.config,
                 vocab_size=self.vocab_size,
@@ -164,6 +166,7 @@ class Diffusion(L.LightningModule):
             )
         elif self.config.backbone == "ar":
             from models import autoregressive
+
             self.backbone = autoregressive.AR(
                 self.config, vocab_size=self.vocab_size, mask_index=self.mask_index
             )
@@ -175,9 +178,8 @@ class Diffusion(L.LightningModule):
             self.config.backbone == "dit_bfn"
         ):  # we need a backbone with input adapter now.
             from models import dit_bfn
-            self.backbone = dit_bfn.BFN_DIT(
-                self.config, vocab_size=self.vocab_size
-            )
+
+            self.backbone = dit_bfn.BFN_DIT(self.config, vocab_size=self.vocab_size)
             if self.config.init_pre_embedding:
                 from transformers import (
                     BertModel,
@@ -219,6 +221,7 @@ class Diffusion(L.LightningModule):
                     raise NotImplementedError
         elif self.config.backbone == "promoter":
             from models import promoter_model
+
             self.backbone = promoter_model.PromoterModel(self.config)
         else:
             raise ValueError(f"Unknown backbone: {self.config.backbone}")
@@ -261,6 +264,7 @@ class Diffusion(L.LightningModule):
         self.noise = noise_schedule.get_noise(self.config, dtype=self.dtype)
         if self.config.training.ema > 0:
             from models import ema
+
             self.ema = ema.ExponentialMovingAverage(
                 itertools.chain(self.backbone.parameters(), self.noise.parameters()),
                 decay=self.config.training.ema,
@@ -667,7 +671,7 @@ class Diffusion(L.LightningModule):
                 wandb.log({"val/gen_kl_epoch": kl_value}, self.global_step)
 
             # log sudoku
-            if self.config.data.train == "text8":
+            if self.config.data.train == "sudoku":
                 valid_count = 0
                 total_violations = 0
                 formatted_data = []
@@ -684,8 +688,8 @@ class Diffusion(L.LightningModule):
                 validity_rate = valid_count / len(text_samples_collection)
                 avg_violations = total_violations / len(text_samples_collection)
 
-                self.log("val/sudoku_validity_rate", validity_rate, sync_dist=True)
-                self.log("val/avg_rule_violations", avg_violations, sync_dist=True)
+                wandb.log({"val/sudoku_validity_rate": validity_rate}, self.global_step)
+                wandb.log({"val/avg_rule_violations": avg_violations}, self.global_step)
 
                 if self.trainer.global_rank == 0:
                     sampled_table = wandb.Table(
@@ -972,7 +976,9 @@ class Diffusion(L.LightningModule):
             t = torch.ones(bsz, 1).to(x_t.device) * (i - 1) / numsteps
             t = 1 - t  # reverse
             #   # [B,1,1]
+            print(f"x_t: {x_t.shape}, t: {t.shape}")
             model_output = self.forward(x_t, t, stage="inference")
+            print(f"output t={i}, shape:{model_output.shape}:\n{model_output}")
             model_output = torch.exp(model_output)
             # print("model output",model_output, t)
             t = t.unsqueeze(-1)
@@ -997,6 +1003,7 @@ class Diffusion(L.LightningModule):
         t = (torch.zeros(bsz, 1) + 1 / numsteps).to(x_t.device)
         predicted = self.forward(x_t, t, stage="inference")
         sample_pred = torch.argmax(predicted, dim=-1)
+        print(f"final: {sample_pred.shape}, {sample_pred}")
 
         return sample_pred
 
@@ -1911,24 +1918,19 @@ class Diffusion(L.LightningModule):
 
 
 def check_sudoku_validity(sample_str):
-    """Returns (is_valid, num_violations)"""
-    if len(sample_str) != 81 or not sample_str.isdigit():
-        return False, 81
-
-    grid = [int(c) for c in sample_str]
-    rows = [grid[i * 9 : (i + 1) * 9] for i in range(9)]
-    cols = [[rows[r][c] for r in range(9)] for c in range(9)]
-    squares = []
-    for r in range(0, 9, 3):
-        for c in range(0, 9, 3):
-            squares.append(
-                [rows[i][j] for i in range(r, r + 3) for j in range(c, c + 3)]
-            )
+    flat = np.array([int(c) for c in sample_str])
+    board = flat.reshape(9, 9)
 
     violations = 0
-    for unit in rows + cols + squares:
-        # Check if unit contains exactly 1-9
-        if len(set(unit)) != 9 or any(x < 1 or x > 9 for x in unit):
-            violations += 1
+    for i in range(9):
+        for n in range(1, 10):
+            violations += np.abs(np.count_nonzero(board[i, :] == n) - 1)
+            violations += np.abs(np.count_nonzero(board[:, i] == n) - 1)
+
+    for br in range(3):
+        for bc in range(3):
+            for n in range(1, 10):
+                box = board[br * 3 : (br + 1) * 3, bc * 3 : (bc + 1) * 3]
+                violations += np.abs(np.count_nonzero(box == n) - 1)
 
     return violations == 0, violations
