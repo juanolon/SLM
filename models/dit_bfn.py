@@ -109,12 +109,15 @@ class Rotary(torch.nn.Module):
 
         return self.cos_cached, self.sin_cached
 
+
 class RotaryEmbedding(nn.Module):
-    def __init__(self, dim, max_position_embeddings, base, device=None):
+    def __init__(self, dim, max_position_embeddings, base=10_000, device=None):
         super().__init__()
 
         # RoPE
-        inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.float32, device=device) / dim))
+        inv_freq = 1.0 / (
+            base ** (torch.arange(0, dim, 2, dtype=torch.float32, device=device) / dim)
+        )
         t = torch.arange(max_position_embeddings, dtype=torch.float32, device=device)
         freqs = torch.outer(t, inv_freq)
 
@@ -127,8 +130,9 @@ class RotaryEmbedding(nn.Module):
         seq_len = x.shape[1]
         return self.cos_cached[:seq_len], self.sin_cached[:seq_len]
 
+
 class RotaryEmbedding2d(nn.Module):
-    def __init__(self, dim, max_position_embeddings, base, device=None):
+    def __init__(self, dim, max_position_embeddings, base=10_000, device=None):
         super().__init__()
 
         # RoPE
@@ -148,8 +152,9 @@ class RotaryEmbedding2d(nn.Module):
         self.cos_cached = nn.Buffer(emb.cos(), persistent=False)
         self.sin_cached = nn.Buffer(emb.sin(), persistent=False)
 
-    def forward(self):
-        return self.cos_cached, self.sin_cached
+    def forward(self, x):
+        seq_len = x.shape[1]
+        return self.cos_cached[:seq_len], self.sin_cached[:seq_len]
 
 
 def rotate_half(x: torch.Tensor):
@@ -363,6 +368,8 @@ class DDiTBlock(nn.Module):
         q, k, v = qkv.unbind(dim=2)  # q, k, v each: (B, S, H, D)
 
         cos, sin = rotary_cos_sin
+        cos = cos.unsqueeze(0)  # (1, S, H)
+        sin = sin.unsqueeze(0)  # (1, S, H)
         q, k = apply_rotary_pos_emb(q, k, cos, sin)
 
         # SDPA expects (Batch, Heads, SeqLen, HeadDim)
@@ -489,9 +496,12 @@ class BFN_DIT(nn.Module, huggingface_hub.PyTorchModelHubMixin):
             self.rotary_emb = RotaryEmbedding2d(
                 config.model.hidden_size // config.model.n_heads,
                 max_position_embeddings=config.model.length,
-                                                )
+            )
         else:
-            self.rotary_emb = RotaryEmbedding(config.model.hidden_size // config.model.n_heads)
+            self.rotary_emb = RotaryEmbedding(
+                config.model.hidden_size // config.model.n_heads,
+                max_position_embeddings=config.model.length,
+            )
 
         blocks = []
         for _ in range(config.model.n_blocks):

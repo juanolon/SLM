@@ -1,5 +1,23 @@
 SHELL := /bin/bash
 
+train_sudoku:
+	python3 main.py \
+		model=nano \
+		data=sudoku \
+		parameterization=new_diff \
+		backbone=dit_bfn \
+		model.length=81 \
+		eval.compute_generative_perplexity=False \
+		wandb.name=nano_sudoku \
+		sampling.steps=1000 \
+		trainer.val_check_interval=347 \
+		training.beta_bfn=0.75 \
+		checkpointing.resume_from_ckpt=False \
+		T=1000 \
+		loader.global_batch_size=1024 \
+		eval.new_diff_calculate=full \
+		trainer.devices=1 \
+
 
 train_text8:
 	python3 main.py \

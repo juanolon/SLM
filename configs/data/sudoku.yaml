@@ -1,0 +1,12 @@
+# TODO: When using this dataset, set model.length = 256 to match D3PM setup
+train: sudoku
+valid: sudoku
+tokenizer_name_or_path: sudoku
+cache_dir: data/sudoku
+wrap: False
+streaming: False
+extra:
+  bucket_size: None
+  max_tokens: None
+  max_batch_size: None
+
