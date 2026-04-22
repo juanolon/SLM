@@ -7,6 +7,7 @@ train_sudoku:
 		parameterization=new_diff \
 		backbone=dit_bfn \
 		model.length=81 \
+		sampling.length=81 \
 		eval.compute_generative_perplexity=False \
 		wandb.name=nano_sudoku \
 		sampling.steps=1000 \
