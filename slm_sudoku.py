@@ -83,16 +83,12 @@ class Perplexity(NLL):
 
 
 class Diffusion(L.LightningModule):
-    def __init__(self, config, tokenizer: transformers.PreTrainedTokenizer):
+    def __init__(self, config):
         super().__init__()
         self.save_hyperparameters()
         self.config = config
 
-        self.tokenizer = tokenizer
-        self.vocab_size = (
-            self.tokenizer.vocab_size if (self.tokenizer is not None) else 4
-        )
-        # print("vocab_size is", self.vocab_size)
+        self.vocab_size = 10
 
         self.sampler = self.config.sampling.predictor
         self.gen_ppl_eval_model_name_or_path = (
@@ -103,15 +99,6 @@ class Diffusion(L.LightningModule):
         self.change_of_variables = self.config.training.change_of_variables
         self.reconstruct_type = self.config.training.reconstruct_type
 
-        # TODO: we do not need mask token here.
-        if (
-            not hasattr(self.tokenizer, "mask_token")
-            or self.tokenizer.mask_token is None
-        ):
-            self.mask_index = self.vocab_size
-            self.vocab_size += 1
-        else:
-            self.mask_index = self.tokenizer.mask_token_id
         self.distribution_factory = CategoricalFactory()
         self.bayesian_flow = DiscreteBayesianFlow(
             n_classes=self.vocab_size,
@@ -138,7 +125,6 @@ class Diffusion(L.LightningModule):
         self.backbone = dit_bfn.BFN_DIT(self.config, vocab_size=self.vocab_size)
 
         self.T = self.config.T
-        self.subs_masking = self.config.subs_masking
 
         self.softplus = torch.nn.Softplus()
         # metrics are automatically reset at end of epoch
@@ -155,14 +141,6 @@ class Diffusion(L.LightningModule):
         # generative perplexity
         self.gen_ppl_metric = Perplexity()
         self.gen_kl_metric = KLDivergence()
-        self.eval_model_tokenizer = transformers.AutoTokenizer.from_pretrained(
-            self.gen_ppl_eval_model_name_or_path
-        )
-        if self.eval_model_tokenizer.pad_token is None:
-            self.eval_model_tokenizer.pad_token = self.eval_model_tokenizer.eos_token
-            self.eval_model_tokenizer.pad_token_id = (
-                self.eval_model_tokenizer.eos_token_id
-            )
 
         self.noise = noise_schedule.get_noise(self.config, dtype=self.dtype)
         if self.config.training.ema > 0:
@@ -194,6 +172,7 @@ class Diffusion(L.LightningModule):
         assert self.parameterization == "new_diff"
         assert self.config.eval.new_diff_calculate == "full"
         assert self.config.backbone == "dit_bfn"
+        assert not self.config.subs_masking
 
     def on_load_checkpoint(self, checkpoint):
         if self.ema:
@@ -348,9 +327,9 @@ class Diffusion(L.LightningModule):
             attention_mask = None
 
         if prefix == "train":
-            losses = self._loss(batch["input_ids"], attention_mask)
+            losses = self._loss(batch["answer"], attention_mask)
         elif prefix == "val" or prefix == "test":
-            losses = self._valid_loss(batch["input_ids"], attention_mask)
+            losses = self._valid_loss(batch["question"], attention_mask)
         else:
             raise ValueError(f"Invalid prefix: {prefix}")
 

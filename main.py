@@ -259,6 +259,10 @@ def _train(config, logger, tokenizer):
         import slm_promoter
 
         model = slm_promoter.Diffusion(config, tokenizer=train_ds.tokenizer)
+    elif config.data.valid == "sudoku":
+        import slm_sudoku
+
+        model = slm_sudoku.Diffusion(config)
     else:
         model = slm.Diffusion(config, tokenizer=train_ds.tokenizer)
     # model = diffusion.Diffusion(config, tokenizer=train_ds.tokenizer)
