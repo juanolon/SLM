@@ -381,8 +381,6 @@ class Diffusion(L.LightningModule):
 
     def on_validation_epoch_end(self):
 
-        text_samples_collection = []
-
         if self.trainer.global_rank == 0:
             valid_count = 0
             total_violations = 0
@@ -393,8 +391,6 @@ class Diffusion(L.LightningModule):
                 batch_solutions = self._sample(board=board)
 
                 for solution in batch_solutions:
-                    text_samples_collection.extend(solution)
-
                     is_valid, violations = check_sudoku_validity(solution)
                     if is_valid:
                         valid_count += 1
@@ -406,8 +402,9 @@ class Diffusion(L.LightningModule):
                     )
                     formatted_data.append([pretty_grid, is_valid, violations])
 
-            validity_rate = valid_count / len(text_samples_collection)
-            avg_violations = total_violations / len(text_samples_collection)
+            num_evaluated = len(formatted_data)
+            validity_rate = valid_count / num_evaluated
+            avg_violations = total_violations / num_evaluated
 
             wandb.log({"val/sudoku_validity_rate": validity_rate}, self.global_step)
             wandb.log({"val/avg_rule_violations": avg_violations}, self.global_step)
