@@ -1,7 +1,7 @@
 [project]
 name = "SLM"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.12, <3.13"
 description = ""
 
 dependencies = [
@@ -35,7 +35,7 @@ dependencies = [
     "matplotlib>=3.9.4",
     "seaborn>=0.13.2",
     "flash-attn-triton>=0.1.1",
-    "selene-sdk>=0.6.0",
+    # "selene-sdk>=0.6.0",
 ]
 
 [project.optional-dependencies]
