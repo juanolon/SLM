@@ -492,6 +492,7 @@ class SudokuDataset(Dataset):
                 "sapientinc/sudoku-extreme",
                 cache_dir=cache_dir,
                 features=sudoku_features,
+                split=split,
             )
 
             def map_chars(string):
@@ -895,7 +896,7 @@ def get_dataloaders(
                     config.data.cache_dir, n_tsses=100000, rand_offset=0, split="test"
                 )
         elif config.data.valid == "sudoku":
-            train_set = SudokuDataset(config.data.cache_dir, split="test")
+            valid_set = SudokuDataset(config.data.cache_dir, split="test")
         else:
             valid_set = get_dataset(
                 config.data.valid,
@@ -919,6 +920,7 @@ def get_dataloaders(
             persistent_workers=False,
         )
         train_loader.tokenizer = tokenizer
+
     if skip_valid:
         valid_loader = None
     else:
@@ -928,6 +930,7 @@ def get_dataloaders(
         else:
             shuffle_valid = True
             generator = torch.Generator().manual_seed(valid_seed)
+
         valid_loader = torch.utils.data.DataLoader(
             valid_set,
             batch_size=config.loader.eval_batch_size,
