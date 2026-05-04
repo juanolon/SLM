@@ -327,9 +327,9 @@ class Diffusion(L.LightningModule):
             attention_mask = None
 
         if prefix == "train":
-            losses = self._loss(batch["input_ids"], attention_mask)
+            losses = self._loss(batch["answer"], attention_mask)
         elif prefix == "val" or prefix == "test":
-            losses = self._valid_loss(batch["input_ids"], attention_mask)
+            losses = self._valid_loss(batch["question"], attention_mask)
         else:
             raise ValueError(f"Invalid prefix: {prefix}")
 
