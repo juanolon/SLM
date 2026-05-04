@@ -303,6 +303,9 @@ def main(config):
         and config.data.train != "sudoku"
     ):
         tokenizer = dataloader.get_tokenizer(config)
+    elif config.data.train == "sudoku":
+        config.callbacks.checkpoint_monitor.monitor = "val/nll"
+        tokenizer = None
     else:
         config.callbacks.checkpoint_monitor.monitor = "val/loss"
         tokenizer = None
