@@ -1918,7 +1918,10 @@ class Diffusion(L.LightningModule):
 
 
 def check_sudoku_validity(sample_str):
-    flat = np.array([int(c) for c in sample_str])
+    try:
+        flat = np.array([int(c) for c in sample_str])
+    except ValueError:
+        return False, 1000
     board = flat.reshape(9, 9)
 
     violations = 0

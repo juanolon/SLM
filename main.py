@@ -296,6 +296,7 @@ def main(config):
         config.data.train != "promoter"
         and config.data.train != "FB"
         and config.data.train != "Mel"
+        and config.data.train != "sudoku"
     ):
         tokenizer = dataloader.get_tokenizer(config)
     else:

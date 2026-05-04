@@ -27,6 +27,7 @@ import utils
 from promoter_utils.promoter_dataset import PromoterDataset
 from promoter_utils.enhancer_dataset import EnhancerDataset
 from datasets import Features, Value
+from torch.utils.data import Dataset
 
 LOGGER = utils.get_logger(__name__)
 
@@ -155,68 +156,6 @@ class Text8Tokenizer(transformers.PreTrainedTokenizer):
 
     def _tokenize(self, text: str, **kwargs) -> typing.List[str]:
         return list(text.lower())
-
-    def _convert_token_to_id(self, token: str) -> int:
-        return self._vocab_str_to_int.get(token, self._vocab_str_to_int["[UNK]"])
-
-    def _convert_id_to_token(self, index: int) -> str:
-        return self._vocab_int_to_str[index]
-
-    def convert_tokens_to_string(self, tokens):
-        return "".join(tokens)
-
-    def get_vocab(self) -> typing.Dict[str, int]:
-        return self._vocab_str_to_int
-
-
-class SudokuTokenizer(transformers.PreTrainedTokenizer):
-    def __init__(
-        self,
-        bos_token="[BOS]",
-        eos_token="[EOS]",
-        sep_token="[SEP]",
-        cls_token="[CLS]",
-        pad_token="[PAD]",
-        mask_token="[MASK]",
-        unk_token="[UNK]",
-        **kwargs,
-    ):
-        self.characters = list("123456789")
-        self._vocab_str_to_int = {
-            "[CLS]": 0,
-            "[SEP]": 1,
-            "[BOS]": 2,
-            "[EOS]": 3,
-            "[MASK]": 4,
-            "[PAD]": 5,
-            "[RESERVED]": 6,
-            "[UNK]": 7,
-            **{ch: i + 8 for i, ch in enumerate(self.characters)},
-        }
-        self._vocab_int_to_str = {v: k for k, v in self._vocab_str_to_int.items()}
-        super().__init__(
-            bos_token=bos_token,
-            eos_token=eos_token,
-            sep_token=sep_token,
-            cls_token=cls_token,
-            pad_token=pad_token,
-            mask_token=mask_token,
-            unk_token=unk_token,
-            **kwargs,
-        )
-
-    @property
-    def vocab_size(self) -> int:
-        return len(self._vocab_str_to_int)
-
-    def _tokenize(self, text: str, **kwargs) -> typing.List[str]:
-        tokens = []
-        for char in text:
-            if char == ".":
-                tokens.append(self.mask_token)
-            else:
-                tokens.append(char)
-        return tokens
 
     def _convert_token_to_id(self, token: str) -> int:
         return self._vocab_str_to_int.get(token, self._vocab_str_to_int["[UNK]"])
@@ -532,37 +471,48 @@ def get_text8_dataset(cache_dir, max_seq_length=256, drop_last=True, crop_train=
     return dataset
 
 
-def get_sudoku_dataset(cache_dir, val_size=10000):
-    _load_dir = f"{cache_dir}/sudoku"
+class SudokuDataset(Dataset):
+    def __init__(self, cache_dir, split="train"):
+        _load_dir = f"{cache_dir}/sudoku"
 
-    if utils.fsspec_exists(_load_dir):
-        return datasets.load_from_disk(_load_dir)
+        os.makedirs(_load_dir, exist_ok=True)
 
-    sudoku_features = Features({"answer": Value("string")})
-    raw_data = datasets.load_dataset("sapientinc/sudoku-extreme", cache_dir=cache_dir, features=sudoku_features)
+        questions_path = os.path.join(_load_dir, f"sudoku_{split}_questions.pt")
+        answers_path = os.path.join(_load_dir, f"sudoku_{split}_answers.pt")
 
-    def prepare_data(batch):
-        return {
-            "text": batch["answer"],
-        }
+        if os.path.exists(questions_path) and os.path.exists(answers_path):
+            print(f"Loading pre-processed {split} tensors from disk...")
+            self.questions = torch.load(questions_path)
+            self.answers = torch.load(answers_path)
+        else:
+            sudoku_features = Features(
+                {"answer": Value("string"), "question": Value("string")}
+            )
+            raw_data = datasets.load_dataset(
+                "sapientinc/sudoku-extreme",
+                cache_dir=cache_dir,
+                features=sudoku_features,
+            )
 
-    dataset = raw_data.map(
-        prepare_data,
-        remove_columns=raw_data["train"].column_names,
-    )
+            def map_chars(string):
+                return [
+                    0 if char == "." or char == "0" else int(char) for char in string
+                ]
 
-    train_val = dataset["train"].train_test_split(test_size=val_size, seed=42)
+            answers = [map_chars(example["answer"]) for example in raw_data]
+            questions = [map_chars(example["question"]) for example in raw_data]
 
-    dataset_dict = datasets.DatasetDict(
-        {
-            "train": train_val["train"],
-            "validation": train_val["test"],
-            "test": dataset["test"],
-        }
-    )
+            self.answers = torch.tensor(answers, dtype=torch.long)
+            self.questions = torch.tensor(questions, dtype=torch.long)
 
-    dataset_dict.save_to_disk(_load_dir)
-    return dataset_dict
+            torch.save(self.questions, questions_path)
+            torch.save(self.answers, answers_path)
+
+    def __len__(self):
+        return len(self.answers)
+
+    def __getitem__(self, idx):
+        return {"question": self.questions[idx], "answer": self.answers[idx]}
 
 
 def _group_texts(examples, block_size, bos, eos):
@@ -638,8 +588,6 @@ def get_dataset(
         dataset = get_text8_dataset(
             cache_dir, max_seq_length=block_size, crop_train=True
         )
-    elif dataset_name == "sudoku":
-        dataset = get_sudoku_dataset(cache_dir)
     elif dataset_name == "uniref50":
         dataset = UniRefDataset(cache_dir, mode, structure=False)
         train_set = WrappedUniRefDataset(train_set, tokenizer, model.length)
@@ -802,8 +750,6 @@ def get_tokenizer(config):
         tokenizer = Tokenizer()
     elif config.data.tokenizer_name_or_path == "text8":
         tokenizer = Text8Tokenizer()
-    elif config.data.tokenizer_name_or_path == "sudoku":
-        tokenizer = SudokuTokenizer()
     elif config.data.tokenizer_name_or_path == "bert-base-uncased":
         tokenizer = transformers.BertTokenizer.from_pretrained("bert-base-uncased")
     else:
@@ -891,6 +837,8 @@ def get_dataloaders(
             train_set = PromoterDataset(
                 config.data.cache_dir, n_tsses=100000, rand_offset=10, split="train"
             )
+        elif config.data.train == "sudoku":
+            train_set = SudokuDataset(config.data.cache_dir, split="train")
         else:
             train_set = get_dataset(
                 config.data.train,
@@ -946,6 +894,8 @@ def get_dataloaders(
                 valid_set = PromoterDataset(
                     config.data.cache_dir, n_tsses=100000, rand_offset=0, split="test"
                 )
+        elif config.data.valid == "sudoku":
+            train_set = SudokuDataset(config.data.cache_dir, split="test")
         else:
             valid_set = get_dataset(
                 config.data.valid,
