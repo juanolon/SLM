@@ -20,7 +20,6 @@ from torch import Tensor
 import dataloader
 import noise_schedule
 import wandb
-from torchmetrics import KLDivergence
 from models import dit_bfn
 
 
@@ -374,7 +373,9 @@ class Diffusion(L.LightningModule):
         loss = self._compute_loss(batch, prefix="val")
         if batch_idx == 0 and len(self.validation_sudoku_samples) == 0:
             print(f"validation batch: {batch['question'].shape}\n{batch}")
-            self.validation_sudoku_samples.append(batch['question'][:self.validation_batch_size].detach().cpu())
+            self.validation_sudoku_samples.append(
+                batch["question"][: self.validation_batch_size].detach().cpu()
+            )
 
         return loss
 
@@ -388,35 +389,34 @@ class Diffusion(L.LightningModule):
             formatted_data = []
 
             for board in self.validation_sudoku_samples:
-                board=board.to(self.device)
-                solution = self._sample(board=board)
-                text_samples_collection.extend(solution)
+                board = board.to(self.device)
+                batch_solutions = self._sample(board=board)
 
+                for solution in batch_solutions:
+                    text_samples_collection.extend(solution)
 
-                is_valid, violations = check_sudoku_validity(solution)
-                if is_valid:
-                    valid_count += 1
-                total_violations += violations
+                    is_valid, violations = check_sudoku_validity(solution)
+                    if is_valid:
+                        valid_count += 1
+                    total_violations += violations
 
-                solution_chars = [str(val) for val in solution.tolist()]
-                pretty_grid = "\n".join(["".join(solution_chars[i : i + 9]) for i in range(0, 81, 9)])
-                formatted_data.append([pretty_grid, is_valid, violations])
+                    solution_chars = [str(val) for val in solution.tolist()]
+                    pretty_grid = "\n".join(
+                        ["".join(solution_chars[i : i + 9]) for i in range(0, 81, 9)]
+                    )
+                    formatted_data.append([pretty_grid, is_valid, violations])
 
+            validity_rate = valid_count / len(text_samples_collection)
+            avg_violations = total_violations / len(text_samples_collection)
 
-                validity_rate = valid_count / len(text_samples_collection)
-                avg_violations = total_violations / len(text_samples_collection)
+            wandb.log({"val/sudoku_validity_rate": validity_rate}, self.global_step)
+            wandb.log({"val/avg_rule_violations": avg_violations}, self.global_step)
 
-                wandb.log({"val/sudoku_validity_rate": validity_rate}, self.global_step)
-                wandb.log({"val/avg_rule_violations": avg_violations}, self.global_step)
-
-                sampled_table = wandb.Table(
-                    columns=["Grid View", "Perfect", "Violations"],
-                    data=formatted_data,
-                )
-                wandb.log(
-                    {f"sudoku_samples_step_{self.global_step}": sampled_table}
-                )
-
+            sampled_table = wandb.Table(
+                columns=["Grid View", "Perfect", "Violations"],
+                data=formatted_data,
+            )
+            wandb.log({f"sudoku_samples_step_{self.global_step}": sampled_table})
 
         valid_dict = self.valid_metrics.compute()
         self.log_dict(valid_dict, on_step=False, on_epoch=True, sync_dist=True)
@@ -469,10 +469,13 @@ class Diffusion(L.LightningModule):
 
         if board is not None:
             puzzle_mask = (board == 0).unsqueeze(-1).to(self.device)
-            board_onehot = F.one_hot(board.long(), num_classes=self.vocab_size).float().to(self.device)
+            board_onehot = (
+                F.one_hot(board.long(), num_classes=self.vocab_size)
+                .float()
+                .to(self.device)
+            )
 
             x_t = torch.where(puzzle_mask, board_onehot, x_t)
-
 
         for i in tqdm(range(1, numsteps + 1), desc="sampling"):
             t = torch.ones(bsz, 1).to(x_t.device) * (i - 1) / numsteps
