@@ -341,36 +341,6 @@ class Diffusion(L.LightningModule):
 
         return logits
 
-    def _d3pm_loss(self, model_output, xt, x0, t):
-        dt = 1 / self.T
-
-        if torch.is_tensor(t):
-            t = t[:, None]
-            assert t.ndim == 2
-            t = t.clamp(0.0, 1.0 - 1e-4)
-        alpha_t = 1 - t + torch.zeros_like(xt)
-        alpha_s = 1 - (t - dt) + torch.zeros_like(xt)
-
-        log_x_theta_at_x0 = torch.gather(model_output, -1, x0[:, :, None]).squeeze(-1)
-        log_x_theta_at_m = model_output[:, :, self.mask_index]
-        x_theta_at_m = log_x_theta_at_m.exp()
-
-        term_1_coef = dt / t
-        term_1_log_nr = torch.log(alpha_t * x_theta_at_m / t + 1)
-        term_1_log_dr = log_x_theta_at_x0
-
-        term_2_coef = 1 - dt / t
-        term_2_log_nr = term_1_log_nr
-        term_2_log_dr = torch.log(alpha_s * x_theta_at_m / (t - dt) + 1)
-
-        L_vb_masked = term_1_coef * (term_1_log_nr - term_1_log_dr) + term_2_coef * (
-            term_2_log_nr - term_2_log_dr
-        )
-
-        L_vb = L_vb_masked * (xt == self.mask_index)
-
-        return self.T * L_vb
-
     def _compute_loss(self, batch, prefix):
         if "attention_mask" in batch:
             attention_mask = batch["attention_mask"]
@@ -563,18 +533,6 @@ class Diffusion(L.LightningModule):
         }
         return [optimizer], [scheduler_dict]
 
-    def q_xt(self, x, move_chance):
-        """Computes the noisy sample xt.
-
-        Args:
-          x: int torch.Tensor with shape (batch_size,
-              diffusion_model_input_length), input.
-          move_chance: float torch.Tensor with shape (batch_size, 1).
-        """
-        move_indices = torch.rand(*x.shape, device=x.device) < move_chance
-        xt = torch.where(move_indices, self.mask_index, x)
-        return xt
-
     def _sample_newdiff(self, bsz, numsteps):
 
         x_t = (
@@ -667,38 +625,14 @@ class Diffusion(L.LightningModule):
 
     def _maybe_sub_sample(self, x0, attention_mask):
         seqlen = x0.shape[1]
-        # print(f"seqlen: {seqlen}")
 
-        if seqlen > self.config.model.length:
-            assert seqlen == 2 * self.config.model.length
+        assert seqlen == self.config.model.length
 
-            # cropping is needed for text8-crop dataset
-            # try the same starting point for now
-            start = np.random.choice(self.config.model.length)
-            end = start + self.config.model.length
-            input_tokens = x0[:, start:end]
-            output_tokens = x0[:, start + 1 : end + 1]
-            new_attention_mask = attention_mask[:, start:end]
+        input_tokens = x0
+        output_tokens = None
+        new_attention_mask = attention_mask
 
-            # Helps with validation PPL, since the val
-            # examples will all start and end with BOS/EOS
-            input_tokens[:, 0] = self.tokenizer.bos_token_id
-            output_tokens[:, -1] = self.tokenizer.eos_token_id
-        else:
-            input_tokens = x0
-            output_tokens = None
-            new_attention_mask = attention_mask
         return input_tokens, output_tokens, new_attention_mask
-
-    def get_xt(self, x0, t):
-        x0 = F.one_hot(x0.long(), num_classes=self.vocab_size)
-        nums = self.log_linear_fun(t)  # [Batch, 1]
-        ones_to_mask = self.generate_3d_tensor_with_ones(
-            x0.shape, nums
-        )  # [Batch, Seq, Features]
-        xt = torch.where(x0 == 1, x0, ones_to_mask)  # [Batch, Seq, Features]
-
-        return xt
 
     def expected_nums(self, t):
         if self.config.training.bscheduler == "loglinear":
