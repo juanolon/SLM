@@ -19,6 +19,7 @@ init_pre_embedding: False #keep embedding as pretrained.
 fixed_embedding: False #keep embedding as fixed. 
 embedding_nml: False #Whether use embedding normalization
 entropy_condition: False #Whether use entropy conditioned. 
+rotary_2d: False
 
 
 seed: 1
