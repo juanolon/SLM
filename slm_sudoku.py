@@ -155,6 +155,7 @@ class Diffusion(L.LightningModule):
         self.fast_forward_batches = None
         self._validate_configuration()
 
+        self.validation_batch_size = 32
         self.validation_sudoku_samples = []
 
         # debug
@@ -372,7 +373,8 @@ class Diffusion(L.LightningModule):
     def validation_step(self, batch, batch_idx):
         loss = self._compute_loss(batch, prefix="val")
         if batch_idx == 0 and len(self.validation_sudoku_samples) == 0:
-            self.validation_sudoku_samples.append(batch[:32].detach().cpu())
+            print(f"validation batch: {batch['question'].shape}\n{batch}")
+            self.validation_sudoku_samples.append(batch['question'][:self.validation_batch_size].detach().cpu())
 
         return loss
 
@@ -386,6 +388,7 @@ class Diffusion(L.LightningModule):
             formatted_data = []
 
             for board in self.validation_sudoku_samples:
+                board=board.to(self.device)
                 solution = self._sample(board=board)
                 text_samples_collection.extend(solution)
 
@@ -395,7 +398,8 @@ class Diffusion(L.LightningModule):
                     valid_count += 1
                 total_violations += violations
 
-                pretty_grid = "\n".join([solution[i : i + 9] for i in range(0, 81, 9)])
+                solution_chars = [str(val) for val in solution.tolist()]
+                pretty_grid = "\n".join(["".join(solution_chars[i : i + 9]) for i in range(0, 81, 9)])
                 formatted_data.append([pretty_grid, is_valid, violations])
 
 
@@ -518,7 +522,7 @@ class Diffusion(L.LightningModule):
         #         [4, 8, 1,  ..., 5, 6, 9]
 
         if board is not None:
-            flat_mask = puzzle_mask.squeeze(-1)
+            flat_mask = puzzle_mask.squeeze(-1).to(self.device)
             sample_pred = torch.where(flat_mask, board, sample_pred)
 
         return sample_pred
@@ -553,7 +557,7 @@ class Diffusion(L.LightningModule):
     @torch.no_grad()
     def _sample(self, num_steps=None, board=None):
         """Generate samples from the model."""
-        batch_size_per_gpu = self.config.loader.eval_batch_size
+        batch_size_per_gpu = self.validation_batch_size
         if num_steps is None:
             num_steps = self.config.sampling.steps
 
