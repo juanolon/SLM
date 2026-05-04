@@ -15,7 +15,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torchmetrics
-import transformers
 from torch import Tensor
 
 import dataloader
@@ -53,7 +52,6 @@ def _sample_bernoulli(categorical_probs):
 class Loss:
     loss: torch.FloatTensor
     nlls: torch.FloatTensor
-    token_mask: torch.FloatTensor
     reconstruct: torch.FloatTensor  # specified for logging reconstruct loss.
     rnlls: torch.FloatTensor
 
@@ -321,28 +319,21 @@ class Diffusion(L.LightningModule):
         return logits
 
     def _compute_loss(self, batch, prefix):
-        if "attention_mask" in batch:
-            attention_mask = batch["attention_mask"]
-        else:
-            attention_mask = None
-
         if prefix == "train":
-            losses = self._loss(batch["answer"], attention_mask)
+            losses = self._loss(batch["answer"])
         elif prefix == "val" or prefix == "test":
-            losses = self._valid_loss(batch["question"], attention_mask)
+            losses = self._valid_loss(batch["question"])
         else:
             raise ValueError(f"Invalid prefix: {prefix}")
 
         loss = losses.loss
         if prefix == "train":
-            self.train_metrics.update(losses.nlls, losses.token_mask)
+            self.train_metrics.update(losses.nlls)
         elif prefix == "val":
-            self.valid_metrics.update(losses.nlls, losses.token_mask)
-            self.valid_recmetrics.update(losses.rnlls, losses.token_mask)
-            # metrics = self.valid_metrics
+            self.valid_metrics.update(losses.nlls)
+            self.valid_recmetrics.update(losses.rnlls)
         elif prefix == "test":
-            self.test_metrics.update(losses.nlls, losses.token_mask)
-            # metrics = self.test_metrics
+            self.test_metrics.update(losses.nlls)
         else:
             raise ValueError(f"Invalid prefix: {prefix}")
         rec_loss = losses.reconstruct
@@ -602,16 +593,15 @@ class Diffusion(L.LightningModule):
             return self.noise.importance_sampling_transformation(t)
         return t
 
-    def _maybe_sub_sample(self, x0, attention_mask):
+    def _maybe_sub_sample(self, x0):
         seqlen = x0.shape[1]
 
         assert seqlen == self.config.model.length
 
         input_tokens = x0
         output_tokens = None
-        new_attention_mask = attention_mask
 
-        return input_tokens, output_tokens, new_attention_mask
+        return input_tokens, output_tokens
 
     def expected_nums(self, t):
         if self.config.training.bscheduler == "loglinear":
@@ -722,60 +712,28 @@ class Diffusion(L.LightningModule):
 
         return nlog_p  # T number of KL
 
-    def _loss(self, x0, attention_mask):
-        (input_tokens, output_tokens, attention_mask) = self._maybe_sub_sample(
-            x0, attention_mask
-        )
-
-        loss = self._forward_new_diffusion(input_tokens, stage="training")
-        reconstruct_loss = torch.zeros_like(loss)
-
-        nlls = loss * attention_mask
-        count = attention_mask.sum()
-
-        batch_nll = nlls.sum()
-        token_nll = batch_nll / count
-
-        reconstructs = reconstruct_loss * attention_mask
-        batch_rec = reconstructs.sum()
-        token_rec = batch_rec / count
+    def _loss(self, x0):
+        loss = self._forward_new_diffusion(x0, stage="training")
 
         return Loss(
-            loss=token_nll,
-            nlls=nlls,
-            token_mask=attention_mask,
-            reconstruct=token_rec,
-            rnlls=reconstructs,
+            loss=loss.mean(),
+            nlls=None,
+            reconstruct=None,
+            rnlls=None,
         )
 
-    # def _reconstruct_only
-    def _valid_loss(self, x0, attention_mask):
-        (input_tokens, output_tokens, attention_mask) = self._maybe_sub_sample(
-            x0, attention_mask
-        )
+    def _valid_loss(self, x0):
+        loss = self._forward_new_diffusion(x0, stage="inference")
 
-        loss = self._forward_new_diffusion(input_tokens, stage="inference")
-        # reconstruct_loss = torch.zeros_like(loss)
         reconstruct_loss = self.compute_reconstruction_loss(
-            input_tokens, type=self.reconstruct_type
+            x0, type=self.reconstruct_type
         )
 
-        nlls = loss * attention_mask
-        count = attention_mask.sum()
-
-        batch_nll = nlls.sum()
-        token_nll = batch_nll / count
-
-        reconstructs = reconstruct_loss * attention_mask
-        batch_rec = reconstructs.sum()
-        token_rec = batch_rec / count
-
         return Loss(
-            loss=token_nll,
-            nlls=nlls,
-            token_mask=attention_mask,
-            reconstruct=token_rec,
-            rnlls=reconstructs,
+            loss=loss.mean(),
+            nlls=None,
+            reconstruct=None,
+            rnlls=reconstruct_loss.mean(),
         )
 
 
