@@ -132,13 +132,8 @@ class Diffusion(L.LightningModule):
         metrics.set_dtype(torch.float64)
         self.train_metrics = metrics.clone(prefix="train/")
         self.valid_metrics = metrics.clone(prefix="val/")
-        self.valid_recmetrics = metrics.clone(prefix="val_rec/")
         self.test_metrics = metrics.clone(prefix="test/")
         self.prefix = ""
-
-        # generative perplexity
-        self.gen_ppl_metric = Perplexity()
-        self.gen_kl_metric = KLDivergence()
 
         self.noise = noise_schedule.get_noise(self.config, dtype=self.dtype)
         if self.config.training.ema > 0:
@@ -159,6 +154,8 @@ class Diffusion(L.LightningModule):
         self.fast_forward_epochs = None
         self.fast_forward_batches = None
         self._validate_configuration()
+
+        self.validation_sudoku_samples = []
 
         # debug
         for name, param in self.named_parameters():
@@ -322,7 +319,7 @@ class Diffusion(L.LightningModule):
         if prefix == "train":
             losses = self._loss(batch["answer"])
         elif prefix == "val" or prefix == "test":
-            losses = self._valid_loss(batch["question"])
+            losses = self._valid_loss(batch["answer"])
         else:
             raise ValueError(f"Invalid prefix: {prefix}")
 
@@ -331,7 +328,6 @@ class Diffusion(L.LightningModule):
             self.train_metrics.update(losses.nlls)
         elif prefix == "val":
             self.valid_metrics.update(losses.nlls)
-            # self.valid_recmetrics.update(losses.rnlls)
         elif prefix == "test":
             self.test_metrics.update(losses.nlls)
         else:
@@ -346,11 +342,11 @@ class Diffusion(L.LightningModule):
         self.train_metrics.reset()
 
     def training_step(self, batch, batch_idx):
-        loss, rec = self._compute_loss(batch, prefix="train")
+        loss, _ = self._compute_loss(batch, prefix="train")
 
         if self.trainer.global_rank == 0 and self.global_step % self.log_interval == 0:
             wandb.log({"trainer/loss": loss.item()}, self.global_step)
-            # wandb.log({"trainer/rec": rec.item()}, self.global_step)
+
         return loss
 
     def on_train_epoch_end(self):
@@ -372,74 +368,36 @@ class Diffusion(L.LightningModule):
         self.valid_metrics.reset()
         assert self.valid_metrics.nll.mean_value == 0
         assert self.valid_metrics.nll.weight == 0
-        # samples = self._sample()
 
     def validation_step(self, batch, batch_idx):
+        loss = self._compute_loss(batch, prefix="val")
+        if batch_idx == 0 and len(self.validation_sudoku_samples) == 0:
+            self.validation_sudoku_samples.append(batch[:32].detach().cpu())
 
-        # in protein generation no ppl
-        return self._compute_loss(batch, prefix="val")
+        return loss
 
     def on_validation_epoch_end(self):
-        if (
-            self.config.eval.compute_perplexity_on_sanity
-            or not self.trainer.sanity_checking
-        ) and self.config.eval.generate_samples:
-            # TODO(justin): implement sampling and kv cache for AR
-            samples, text_samples = None, None
 
-            text_samples_collection = []
+        text_samples_collection = []
 
-            for _ in range(self.config.sampling.num_sample_batches):
-                samples = self._sample()
-                # Decode the samples to be re-tokenized by eval model
-                text_samples = self.tokenizer.batch_decode(samples)
-                text_samples_collection.extend(text_samples)
-                print(
-                    f"len of text_samples_collection is {len(text_samples_collection)}"
-                )
+        if self.trainer.global_rank == 0:
+            valid_count = 0
+            total_violations = 0
+            formatted_data = []
 
-            if self.trainer.global_rank == 0:
-                # Log the last generated samples
-                # text_samples_collection = text_samples_collection[
-                #   : self.config.sampling.num_sample_log]
+            for board in self.validation_sudoku_samples:
+                solution = self._sample(board=board)
+                text_samples_collection.extend(solution)
 
-                # modify to pure wandb
-                sampled_table = wandb.Table(
-                    columns=["Generated Samples"],
-                    data=[[s] for s in text_samples_collection],
-                )
-                wandb.log({f"samples@global_step{self.global_step}": sampled_table})
-            ppl_value = self.gen_ppl_metric.compute()
-            kl_value = self.gen_kl_metric.compute()
-            self.log(
-                "val/gen_ppl_epoch",
-                ppl_value,
-                on_step=False,
-                on_epoch=True,
-                sync_dist=True,
-            )
-            self.log(
-                "val/gen_kl_epoch",
-                kl_value,
-                on_step=False,
-                on_epoch=True,
-                sync_dist=True,
-            )
 
-            # log sudoku
-            if self.config.data.train == "sudoku":
-                valid_count = 0
-                total_violations = 0
-                formatted_data = []
+                is_valid, violations = check_sudoku_validity(solution)
+                if is_valid:
+                    valid_count += 1
+                total_violations += violations
 
-                for s in text_samples_collection:
-                    is_valid, violations = check_sudoku_validity(s)
-                    if is_valid:
-                        valid_count += 1
-                    total_violations += violations
+                pretty_grid = "\n".join([solution[i : i + 9] for i in range(0, 81, 9)])
+                formatted_data.append([pretty_grid, is_valid, violations])
 
-                    pretty_grid = "\n".join([s[i : i + 9] for i in range(0, 81, 9)])
-                    formatted_data.append([pretty_grid, is_valid, violations])
 
                 validity_rate = valid_count / len(text_samples_collection)
                 avg_violations = total_violations / len(text_samples_collection)
@@ -447,24 +405,20 @@ class Diffusion(L.LightningModule):
                 wandb.log({"val/sudoku_validity_rate": validity_rate}, self.global_step)
                 wandb.log({"val/avg_rule_violations": avg_violations}, self.global_step)
 
-                if self.trainer.global_rank == 0:
-                    sampled_table = wandb.Table(
-                        columns=["Grid View", "Perfect", "Violations"],
-                        data=formatted_data,
-                    )
-                    wandb.log(
-                        {f"sudoku_samples_step_{self.global_step}": sampled_table}
-                    )
+                sampled_table = wandb.Table(
+                    columns=["Grid View", "Perfect", "Violations"],
+                    data=formatted_data,
+                )
+                wandb.log(
+                    {f"sudoku_samples_step_{self.global_step}": sampled_table}
+                )
+
 
         valid_dict = self.valid_metrics.compute()
         self.log_dict(valid_dict, on_step=False, on_epoch=True, sync_dist=True)
-        valid_rec_dict = self.valid_recmetrics.compute()
-        print(f"valid_rec_dict is {valid_rec_dict}")
-        self.log_dict(valid_rec_dict, on_step=False, on_epoch=True, sync_dist=True)
 
         if self.trainer.global_rank == 0:
             wandb.log(valid_dict, self.global_step)
-            wandb.log(valid_rec_dict, self.global_step)
         if self.ema:
             self.ema.restore(
                 itertools.chain(self.backbone.parameters(), self.noise.parameters())
@@ -503,34 +457,47 @@ class Diffusion(L.LightningModule):
         }
         return [optimizer], [scheduler_dict]
 
-    def _sample_newdiff(self, bsz, numsteps):
-
+    def _sample_newdiff(self, bsz, numsteps, board=None):
         x_t = (
             torch.ones(bsz, self.config.sampling.length, self.vocab_size)
             / self.vocab_size
         ).to(self.device)  # [N, K] discrete prior
-        print(f"sample steps {numsteps}")
+
+        if board is not None:
+            puzzle_mask = (board == 0).unsqueeze(-1).to(self.device)
+            board_onehot = F.one_hot(board.long(), num_classes=self.vocab_size).float().to(self.device)
+
+            x_t = torch.where(puzzle_mask, board_onehot, x_t)
+
+
         for i in tqdm(range(1, numsteps + 1), desc="sampling"):
             t = torch.ones(bsz, 1).to(x_t.device) * (i - 1) / numsteps
             t = 1 - t  # reverse
             #   # [B,1,1]
-            print(f"x_t: {x_t.shape}, t: {t.shape}")
+            # print(f"x_t: {x_t.shape}, t: {t.shape}")
+            # x_t: torch.Size([128, 81, 10]), t: torch.Size([128, 1])
+
             model_output = self.forward(x_t, t, stage="inference")
-            print(f"output t={i}, shape:{model_output.shape}:\n{model_output}")
+            # print(f"output t={i}, shape:{model_output.shape}:\n{model_output}")
+            # output t=1000, shape:torch.Size([128, 81, 10]):
+            # tensor([[[   -inf,    -inf,    -inf,  ...,  0.0000,    -inf,    -inf],
+
             model_output = torch.exp(model_output)
             # print("model output",model_output, t)
+
             t = t.unsqueeze(-1)
-            # model_output = torch.log(model_output)
+
             nominator = torch.clamp(self.expected_nums(t - 1 / numsteps) - 1, min=1e-1)
             denominator = torch.clamp(self.expected_nums(t) - 1, min=1e-1)
             predicted = model_output * 1 + torch.clamp(
                 nominator / denominator, max=1.0, min=0.0
             ) * (1 - model_output)
             predicted = torch.clamp(predicted, min=0.0, max=1.0)
+
             sample_pred = _sample_bernoulli(predicted) * (x_t > 0)
-            # sample_pred = torch.distributions.Bernoulli(predicted).sample() * (x_t > 0)
             sample_pred_sum = sample_pred.sum(-1, keepdim=True)
             mask = sample_pred_sum > 0
+
             sample_pred = torch.where(
                 mask,
                 sample_pred,
@@ -538,10 +505,21 @@ class Diffusion(L.LightningModule):
             )
             x_t = sample_pred / torch.clamp(sample_pred.sum(-1, keepdim=True), min=0.0)
 
+            if board is not None:
+                x_t = torch.where(puzzle_mask, board_onehot, x_t)
+
         t = (torch.zeros(bsz, 1) + 1 / numsteps).to(x_t.device)
         predicted = self.forward(x_t, t, stage="inference")
         sample_pred = torch.argmax(predicted, dim=-1)
-        print(f"final: {sample_pred.shape}, {sample_pred}")
+
+        # print(f"final: {sample_pred.shape}, {sample_pred}")
+        # final: torch.Size([128, 81]), tensor([[7, 3, 4,  ..., 1, 9, 8],
+        #         [5, 7, 2,  ..., 7, 9, 4],
+        #         [4, 8, 1,  ..., 5, 6, 9]
+
+        if board is not None:
+            flat_mask = puzzle_mask.squeeze(-1)
+            sample_pred = torch.where(flat_mask, board, sample_pred)
 
         return sample_pred
 
@@ -573,14 +551,14 @@ class Diffusion(L.LightningModule):
             raise NotImplementedError
 
     @torch.no_grad()
-    def _sample(self, num_steps=None, eps=1e-5):
+    def _sample(self, num_steps=None, board=None):
         """Generate samples from the model."""
         batch_size_per_gpu = self.config.loader.eval_batch_size
         if num_steps is None:
             num_steps = self.config.sampling.steps
 
         return self._sample_newdiff(
-            batch_size_per_gpu, num_steps
+            batch_size_per_gpu, num_steps, board
         )  # add new_diff sampler
 
     def _sample_t(self, n, device):
@@ -646,9 +624,6 @@ class Diffusion(L.LightningModule):
         return diffusion_loss
 
     def _new_diffusion_loss(self, model_output, xt, x0, t, stage="training"):
-        dt = 1 / self.T
-        #   n_t = self.log_linear_fun(t).unsqueeze(-1) #make this part continous
-        #   n_t_1 = self.log_linear_fun(t-dt).unsqueeze(-1)
         mask = xt > 0
 
         n_t = self.expected_nums(t).unsqueeze(-1)
@@ -658,12 +633,7 @@ class Diffusion(L.LightningModule):
         nominator = torch.clamp(n_t_1 - 1, min=1e-1)
         denominator = torch.clamp(n_t - 1, min=1e-1)
 
-        one_hot_x0 = F.one_hot(x0, num_classes=self.vocab_size)
-        if self.config.data.train == "text8":
-            # for text8 we do not use the logsumexp:
-            # model_output = torch.log(model_output)
-            model_output = model_output
-
+        # pred_theta(x^c_t)
         predicted = torch.exp(model_output) * 1 + torch.clamp(
             nominator / denominator, min=0.0, max=1.0 - 1e-4
         ) * (1 - torch.exp(model_output))  # model_output is probability
