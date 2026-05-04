@@ -127,7 +127,7 @@ class Diffusion(L.LightningModule):
         self.softplus = torch.nn.Softplus()
         # metrics are automatically reset at end of epoch
         metrics = torchmetrics.MetricCollection(
-            {"nll": NLL(), "bpd": BPD(), "ppl": Perplexity(), "kl": KLDivergence()}
+            {"nll": NLL(), "bpd": BPD(), "ppl": Perplexity()}
         )
         metrics.set_dtype(torch.float64)
         self.train_metrics = metrics.clone(prefix="train/")
@@ -331,7 +331,7 @@ class Diffusion(L.LightningModule):
             self.train_metrics.update(losses.nlls)
         elif prefix == "val":
             self.valid_metrics.update(losses.nlls)
-            self.valid_recmetrics.update(losses.rnlls)
+            # self.valid_recmetrics.update(losses.rnlls)
         elif prefix == "test":
             self.test_metrics.update(losses.nlls)
         else:
@@ -350,7 +350,7 @@ class Diffusion(L.LightningModule):
 
         if self.trainer.global_rank == 0 and self.global_step % self.log_interval == 0:
             wandb.log({"trainer/loss": loss.item()}, self.global_step)
-            wandb.log({"trainer/rec": rec.item()}, self.global_step)
+            # wandb.log({"trainer/rec": rec.item()}, self.global_step)
         return loss
 
     def on_train_epoch_end(self):
@@ -717,8 +717,8 @@ class Diffusion(L.LightningModule):
 
         return Loss(
             loss=loss.mean(),
-            nlls=None,
-            reconstruct=None,
+            nlls=loss,
+            reconstruct=0,
             rnlls=None,
         )
 
@@ -731,9 +731,9 @@ class Diffusion(L.LightningModule):
 
         return Loss(
             loss=loss.mean(),
-            nlls=None,
-            reconstruct=None,
-            rnlls=reconstruct_loss.mean(),
+            nlls=loss,
+            reconstruct=reconstruct_loss.mean(),
+            rnlls=reconstruct_loss,
         )
 
 
