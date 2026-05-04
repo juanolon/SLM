@@ -19,13 +19,9 @@ import transformers
 
 # protein evodiff
 from typing import Iterable
-from evodiff.utils import Tokenizer
-from evodiff.data import UniRefDataset, WrappedUniRefDataset
 from torch.utils.data import Sampler, BatchSampler
 
 import utils
-from promoter_utils.promoter_dataset import PromoterDataset
-from promoter_utils.enhancer_dataset import EnhancerDataset
 from datasets import Features, Value
 from torch.utils.data import Dataset
 
@@ -590,6 +586,7 @@ def get_dataset(
             cache_dir, max_seq_length=block_size, crop_train=True
         )
     elif dataset_name == "uniref50":
+        from evodiff.data import UniRefDataset, WrappedUniRefDataset
         dataset = UniRefDataset(cache_dir, mode, structure=False)
         train_set = WrappedUniRefDataset(train_set, tokenizer, model.length)
     elif dataset_name == "openwebtext-train":
@@ -748,6 +745,8 @@ def get_tokenizer(config):
 
     if config.data.tokenizer_name_or_path == "uniref50":
         # print(f"using tokenizer: {config.data.tokenizer_name_or_path}")
+
+        from evodiff.utils import Tokenizer
         tokenizer = Tokenizer()
     elif config.data.tokenizer_name_or_path == "text8":
         tokenizer = Text8Tokenizer()
@@ -828,13 +827,21 @@ def get_dataloaders(
         train_set = None
     else:
         if config.data.tokenizer_name_or_path == "uniref50":
+            from evodiff.data import UniRefDataset, WrappedUniRefDataset
+
             train_set = UniRefDataset(config.data.cache_dir, "train", structure=False)
             train_set = WrappedUniRefDataset(train_set, tokenizer, config.model.length)
         elif config.data.train == "FB":
+            from promoter_utils.enhancer_dataset import EnhancerDataset
+
             train_set = EnhancerDataset("FB", config.data.cache_dir, split="train")
         elif config.data.train == "Mel":
+            from promoter_utils.enhancer_dataset import EnhancerDataset
+
             train_set = EnhancerDataset("Mel", config.data.cache_dir, split="train")
         elif config.data.train == "promoter":
+            from promoter_utils.promoter_dataset import PromoterDataset
+
             train_set = PromoterDataset(
                 config.data.cache_dir, n_tsses=100000, rand_offset=10, split="train"
             )
@@ -862,6 +869,8 @@ def get_dataloaders(
         valid_set = None
     else:
         if config.data.tokenizer_name_or_path == "uniref50":
+            from evodiff.data import UniRefDataset, WrappedUniRefDataset
+
             if skip_train:
                 valid_set = UniRefDataset(
                     config.data.cache_dir, "rtest", structure=False, max_len=1024
@@ -877,16 +886,22 @@ def get_dataloaders(
                     valid_set, tokenizer, config.model.length
                 )
         elif config.data.valid == "FB":
+            from promoter_utils.enhancer_dataset import EnhancerDataset
+
             if not val_on_test:
                 valid_set = EnhancerDataset("FB", config.data.cache_dir, split="valid")
             else:
                 valid_set = EnhancerDataset("FB", config.data.cache_dir, split="test")
         elif config.data.valid == "Mel":
+            from promoter_utils.enhancer_dataset import EnhancerDataset
+
             if not val_on_test:
                 valid_set = EnhancerDataset("Mel", config.data.cache_dir, split="valid")
             else:
                 valid_set = EnhancerDataset("Mel", config.data.cache_dir, split="test")
         elif config.data.valid == "promoter":
+            from promoter_utils.promoter_dataset import PromoterDataset
+
             if not val_on_test:
                 valid_set = PromoterDataset(
                     config.data.cache_dir, n_tsses=100000, rand_offset=0, split="valid"
