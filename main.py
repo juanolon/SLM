@@ -14,7 +14,7 @@ import slm
 import utils
 import wandb
 from lightning.pytorch.strategies import DDPStrategy
-from lightning.pytorch.loggers import CSVLogger
+from lightning.pytorch.loggers import CSVLogger, WandbLogger
 
 
 omegaconf.OmegaConf.register_new_resolver("cwd", os.getcwd)
@@ -231,6 +231,12 @@ def _train(config, logger, tokenizer):
     _init_wandb(config)
     local_logger = CSVLogger(save_dir=config.logging_dir, flush_logs_every_n_steps=100)
 
+    config_ = {}
+    if config.get("wandb", None) is not None:
+        config_ = omegaconf.OmegaConf.to_object(config)
+
+    wandb_logger = WandbLogger(**config_["wandb"])
+
     if (
         config.checkpointing.resume_from_ckpt
         and config.checkpointing.resume_ckpt_path is not None
@@ -282,7 +288,7 @@ def _train(config, logger, tokenizer):
             default_root_dir=os.getcwd(),
             callbacks=callbacks,
             strategy=hydra.utils.instantiate(config.strategy),
-            logger=local_logger,
+            logger=wandb_logger,
             # use_distributed_sampler=False
         )
 

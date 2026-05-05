@@ -148,7 +148,6 @@ class Diffusion(L.LightningModule):
         self.lr = self.config.optim.lr
         self.sampling_eps = self.config.training.sampling_eps
         self.time_conditioning = self.config.time_conditioning
-        self.log_interval = self.config.trainer.log_every_n_steps
         self.neg_infinity = -1000000.0
         self.fast_forward_epochs = None
         self.fast_forward_batches = None
@@ -344,16 +343,19 @@ class Diffusion(L.LightningModule):
     def training_step(self, batch, batch_idx):
         loss, _ = self._compute_loss(batch, prefix="train")
 
-        if self.trainer.global_rank == 0 and self.global_step % self.log_interval == 0:
-            wandb.log({"trainer/loss": loss.item()}, self.global_step)
+        self.log(
+            "trainer/loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         return loss
 
     def on_train_epoch_end(self):
         current_dict = self.train_metrics.compute()
         self.log_dict(current_dict, on_step=False, on_epoch=True, sync_dist=True)
-        if self.trainer.global_rank == 0:
-            wandb.log(current_dict, self.current_epoch)
 
     def on_validation_epoch_start(self):
         if self.ema:
@@ -365,14 +367,15 @@ class Diffusion(L.LightningModule):
             )
         self.backbone.eval()
         self.noise.eval()
-        self.valid_metrics.reset()
+        self.alid_metrics.reset()
         assert self.valid_metrics.nll.mean_value == 0
         assert self.valid_metrics.nll.weight == 0
 
     def validation_step(self, batch, batch_idx):
         loss = self._compute_loss(batch, prefix="val")
+
+        # save a slice of sudoku samples from the validation split
         if batch_idx == 0 and len(self.validation_sudoku_samples) == 0:
-            print(f"validation batch: {batch['question'].shape}\n{batch}")
             self.validation_sudoku_samples.append(
                 batch["question"][: self.validation_batch_size].detach().cpu()
             )
@@ -380,46 +383,70 @@ class Diffusion(L.LightningModule):
         return loss
 
     def on_validation_epoch_end(self):
-
         if self.trainer.global_rank == 0:
             valid_count = 0
             total_violations = 0
             formatted_data = []
 
-            for board in self.validation_sudoku_samples:
-                board = board.to(self.device)
-                batch_solutions = self._sample(board=board)
+            board_batch = self.validation_sudoku_samples[0].to(self.device)
+            batch_solutions = self._sample(board=board_batch)
 
-                for solution in batch_solutions:
-                    is_valid, violations = check_sudoku_validity(solution)
-                    if is_valid:
-                        valid_count += 1
-                    total_violations += violations
+            for b_idx, solution in enumerate(batch_solutions):
+                is_valid, violations, violations_idx = check_sudoku_validity(solution)
+                if is_valid:
+                    valid_count += 1
+                total_violations += violations
 
-                    solution_chars = [str(val) for val in solution.tolist()]
-                    pretty_grid = "\n".join(
-                        ["".join(solution_chars[i : i + 9]) for i in range(0, 81, 9)]
-                    )
-                    formatted_data.append([pretty_grid, is_valid, violations])
+                orig_board = board_batch[b_idx].tolist()
+                solution_flat = solution.tolist()
+
+                html_grid = "<div style='font-family: monospace; font-size: 16px; letter-spacing: 6px;'>"
+                for i in range(81):
+                    val = solution_flat[i]
+                    orig_val = orig_board[i]
+
+                    if i in violations_idx:
+                        html_grid += f"<span style='color: #ff4a4a; font-weight: bold;'>{val}</span>"
+                    elif orig_val != 0:
+                        html_grid += f"<span style='color: #3b82f6; font-weight: bold;'>{val}</span>"
+                    else:
+                        html_grid += f"<span style='color: #a1a1aa;'>{val}</span>"
+
+                    if (i + 1) % 9 == 0:
+                        html_grid += "<br>"
+
+                html_grid += "</div>"
+
+                # solution_chars = [str(val) for val in solution.tolist()]
+                # pretty_grid = "\n".join(
+                #     ["".join(solution_chars[i : i + 9]) for i in range(0, 81, 9)]
+                # )
+                # formatted_data.append([pretty_grid, is_valid, violations])
+                formatted_data.append([wandb.Html(html_grid), is_valid, violations])
 
             num_evaluated = len(formatted_data)
             validity_rate = valid_count / num_evaluated
             avg_violations = total_violations / num_evaluated
 
-            wandb.log({"val/sudoku_validity_rate": validity_rate}, self.global_step)
-            wandb.log({"val/avg_rule_violations": avg_violations}, self.global_step)
+            self.log_dict(
+                {
+                    "val/sudoku_validity_rate": validity_rate,
+                    "val/avg_rule_violations": avg_violations,
+                },
+                rank_zero_only=True,
+            )
 
             sampled_table = wandb.Table(
                 columns=["Grid View", "Perfect", "Violations"],
                 data=formatted_data,
             )
-            wandb.log({f"sudoku_samples_step_{self.global_step}": sampled_table})
+            self.logger.experiment.log(
+                {f"sudoku_samples_step_{self.global_step}": sampled_table}
+            )
 
         valid_dict = self.valid_metrics.compute()
         self.log_dict(valid_dict, on_step=False, on_epoch=True, sync_dist=True)
 
-        if self.trainer.global_rank == 0:
-            wandb.log(valid_dict, self.global_step)
         if self.ema:
             self.ema.restore(
                 itertools.chain(self.backbone.parameters(), self.noise.parameters())
@@ -431,8 +458,6 @@ class Diffusion(L.LightningModule):
     def on_test_epoch_end(self):
         test_dict = self.test_metrics.compute()
         self.log_dict(test_dict, on_step=False, on_epoch=True, sync_dist=True)
-        if self.trainer.global_rank == 0:
-            wandb.log(test_dict, self.current_epoch)
 
     def configure_optimizers(self):
         # TODO(yair): Lightning currently giving this warning when using `fp16`:
@@ -715,19 +740,33 @@ def check_sudoku_validity(sample_str):
     try:
         flat = np.array([int(c) for c in sample_str])
     except ValueError:
-        return False, 1000
-    board = flat.reshape(9, 9)
+        return False, 1000, set(range(81))
 
+    board = flat.reshape(9, 9)
     violations = 0
+    violation_idx = set()
+
     for i in range(9):
         for n in range(1, 10):
-            violations += np.abs(np.count_nonzero(board[i, :] == n) - 1)
-            violations += np.abs(np.count_nonzero(board[:, i] == n) - 1)
+            row_matches = np.where(board[i, :] == n)[0]
+            violations += np.abs(len(row_matches) - 1)
+            if len(row_matches) > 1:
+                violation_idx.update(i * 9 + row_matches)
+
+            col_matches = np.where(board[:, i] == n)[0]
+            violations += np.abs(len(col_matches) - 1)
+            if len(col_matches) > 1:
+                violation_idx.update(col_matches * 9 + i)
 
     for br in range(3):
         for bc in range(3):
             for n in range(1, 10):
                 box = board[br * 3 : (br + 1) * 3, bc * 3 : (bc + 1) * 3]
-                violations += np.abs(np.count_nonzero(box == n) - 1)
+                tower_matches = np.where(box == n)
+                violations += np.abs(len(tower_matches[0]) - 1)
 
-    return violations == 0, violations
+                if len(tower_matches[0]) > 1:
+                    for r, c in zip(*tower_matches):
+                        violation_idx.add((br * 3 + r) * 9 + (bc * 3 + c))
+
+    return violations == 0, violations, violation_idx
