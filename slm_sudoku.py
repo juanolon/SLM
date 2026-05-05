@@ -364,7 +364,7 @@ class Diffusion(L.LightningModule):
             )
         self.backbone.eval()
         self.noise.eval()
-        self.alid_metrics.reset()
+        self.valid_metrics.reset()
         assert self.valid_metrics.nll.mean_value == 0
         assert self.valid_metrics.nll.weight == 0
 
