@@ -11,12 +11,13 @@ train_sudoku:
 		sampling.length=81 \
 		eval.compute_generative_perplexity=False \
 		wandb.name=nano_sudoku \
-		sampling.steps=1000 \
+		sampling.steps=100 \
 		trainer.val_check_interval=347 \
 		training.beta_bfn=0.75 \
 		checkpointing.resume_from_ckpt=False \
 		T=1000 \
 		loader.global_batch_size=256 \
+		loader.num_workers=7 \
 		eval.new_diff_calculate=full \
 		trainer.devices=1 \
 
