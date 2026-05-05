@@ -326,11 +326,11 @@ class Diffusion(L.LightningModule):
 
         loss = losses.loss
         if prefix == "train":
-            self.train_metrics.update(losses.nlls, seq_len)
+            self.train_metrics.update(losses.nlls)
         elif prefix == "val":
-            self.valid_metrics.update(losses.nlls, seq_len)
+            self.valid_metrics.update(losses.nlls)
         elif prefix == "test":
-            self.test_metrics.update(losses.nlls, seq_len)
+            self.test_metrics.update(losses.nlls)
         else:
             raise ValueError(f"Invalid prefix: {prefix}")
         rec_loss = losses.reconstruct
@@ -373,6 +373,12 @@ class Diffusion(L.LightningModule):
             self.ema.copy_to(
                 itertools.chain(self.backbone.parameters(), self.noise.parameters())
             )
+
+        computed = self.train_metrics.compute()
+        print(f"[DEBUG] train metrics: {computed}")
+        self.log_dict(computed, on_epoch=True)
+        self.train_metrics.reset()
+
         self.backbone.eval()
         self.noise.eval()
         self.valid_metrics.reset()
@@ -466,7 +472,8 @@ class Diffusion(L.LightningModule):
                 data=formatted_data,
             )
             self.logger.experiment.log(
-                {f"sudoku_samples_step_{self.global_step}": sampled_table}
+                {f"sudoku_samples_step_{self.global_step}": sampled_table},
+                step=self.global_step
             )
 
         if self.ema:
@@ -519,7 +526,7 @@ class Diffusion(L.LightningModule):
                 .to(self.device)
             )
 
-            x_t = torch.where(puzzle_mask, board_onehot, x_t)
+            x_t = torch.where(puzzle_mask, x_t, board_onehot)
 
         for i in tqdm(range(1, numsteps + 1), desc="sampling"):
             t = torch.ones(bsz, 1).to(x_t.device) * (i - 1) / numsteps
@@ -557,7 +564,7 @@ class Diffusion(L.LightningModule):
             x_t = sample_pred / torch.clamp(sample_pred.sum(-1, keepdim=True), min=0.0)
 
             if board is not None:
-                x_t = torch.where(puzzle_mask, board_onehot, x_t)
+                x_t = torch.where(puzzle_mask, x_t, board_onehot)
 
         t = (torch.zeros(bsz, 1) + 1 / numsteps).to(x_t.device)
         predicted = self.forward(x_t, t, stage="inference")
@@ -570,7 +577,7 @@ class Diffusion(L.LightningModule):
 
         if board is not None:
             flat_mask = puzzle_mask.squeeze(-1).to(self.device)
-            sample_pred = torch.where(flat_mask, board, sample_pred)
+            sample_pred = torch.where(flat_mask, sample_pred, board)
 
         return sample_pred
 
@@ -736,10 +743,11 @@ class Diffusion(L.LightningModule):
     def _loss(self, x0):
         loss = self._forward_new_diffusion(x0, stage="training")
 
+        seq_len = x0.shape[1]
         sum_loss = loss.sum(-1)
         return Loss(
             loss=loss.mean(),
-            nlls=sum_loss,
+            nlls=sum_loss / seq_len,
             reconstruct=torch.tensor(0.0, device=x0.device),
             rnlls=torch.zeros_like(sum_loss),
         )
@@ -751,11 +759,12 @@ class Diffusion(L.LightningModule):
             x0, type=self.reconstruct_type
         )
 
+        seq_len = x0.shape[1]
         return Loss(
             loss=loss.mean(),
-            nlls=loss.sum(-1),
+            nlls=loss.sum(-1) / seq_len,
             reconstruct=reconstruct_loss.mean(),
-            rnlls=reconstruct_loss.sum(-1),
+            rnlls=reconstruct_loss.flatten(),
         )
 
 
