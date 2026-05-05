@@ -322,13 +322,15 @@ class Diffusion(L.LightningModule):
         else:
             raise ValueError(f"Invalid prefix: {prefix}")
 
+        seq_len = batch["answer"].shape[1]
+
         loss = losses.loss
         if prefix == "train":
-            self.train_metrics.update(losses.nlls)
+            self.train_metrics.update(losses.nlls, seq_len)
         elif prefix == "val":
-            self.valid_metrics.update(losses.nlls)
+            self.valid_metrics.update(losses.nlls, seq_len)
         elif prefix == "test":
-            self.test_metrics.update(losses.nlls)
+            self.test_metrics.update(losses.nlls, seq_len)
         else:
             raise ValueError(f"Invalid prefix: {prefix}")
         rec_loss = losses.reconstruct
@@ -342,6 +344,9 @@ class Diffusion(L.LightningModule):
     def training_step(self, batch, batch_idx):
         loss, _ = self._compute_loss(batch, prefix="train")
 
+        if torch.isnan(loss):
+            print(f"[DEBUG] nan loss at step {self.global_step}")
+
         self.log(
             "trainer/loss",
             loss,
@@ -350,9 +355,15 @@ class Diffusion(L.LightningModule):
             prog_bar=True,
         )
 
-        self.log_dict(self.train_metrics, on_step=False, on_epoch=True)
+        # self.log_dict(self.train_metrics, on_step=False, on_epoch=True)
 
         return loss
+
+    def on_train_epoch_end(self):
+        computed = self.train_metrics.compute()
+        print(f"[DEBUG] train metrics: {computed}")
+        self.log_dict(computed, on_epoch=True)
+        self.train_metrics.reset()
 
     def on_validation_epoch_start(self):
         if self.ema:
@@ -371,14 +382,14 @@ class Diffusion(L.LightningModule):
     def validation_step(self, batch, batch_idx):
         loss, rec_loss = self._compute_loss(batch, prefix="val")
 
-        self.log(
-            {"val/loss": loss, "val/reconstruct_loss": rec_loss},
-            on_step=True,
-            on_epoch=True,
-            prog_bar=True,
-        )
+        # self.log_dict(
+        #     {"val/loss": loss, "val/reconstruct_loss": rec_loss},
+        #     on_step=False,
+        #     on_epoch=True,
+        #     prog_bar=True,
+        # )
 
-        self.log_dict(self.valid_metrics, on_step=False, on_epoch=True, sync_dist=True)
+        # self.log_dict(self.valid_metrics, on_step=False, on_epoch=True, sync_dist=True)
 
         # save a slice of sudoku samples from the validation split
         if batch_idx == 0 and len(self.validation_sudoku_samples) == 0:
@@ -389,6 +400,14 @@ class Diffusion(L.LightningModule):
         return loss
 
     def on_validation_epoch_end(self):
+        self.log_dict(
+            self.valid_metrics.compute(),
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        self.valid_metrics.reset()
+
         if self.trainer.global_rank == 0:
             valid_count = 0
             total_violations = 0
@@ -717,11 +736,12 @@ class Diffusion(L.LightningModule):
     def _loss(self, x0):
         loss = self._forward_new_diffusion(x0, stage="training")
 
+        sum_loss = loss.sum(-1)
         return Loss(
             loss=loss.mean(),
-            nlls=loss,
-            reconstruct=0,
-            rnlls=None,
+            nlls=sum_loss,
+            reconstruct=torch.tensor(0.0, device=x0.device),
+            rnlls=torch.zeros_like(sum_loss),
         )
 
     def _valid_loss(self, x0):
@@ -733,9 +753,9 @@ class Diffusion(L.LightningModule):
 
         return Loss(
             loss=loss.mean(),
-            nlls=loss,
+            nlls=loss.sum(-1),
             reconstruct=reconstruct_loss.mean(),
-            rnlls=reconstruct_loss,
+            rnlls=reconstruct_loss.sum(-1),
         )
 
 
