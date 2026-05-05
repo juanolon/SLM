@@ -422,6 +422,7 @@ class Diffusion(L.LightningModule):
                     valid_count += 1
                 total_violations += violations
 
+                print(f"Sample {b_idx}: {solution}")
                 orig_board = board_batch[b_idx].tolist()
                 solution_flat = solution.tolist()
 
@@ -430,10 +431,10 @@ class Diffusion(L.LightningModule):
                     val = solution_flat[i]
                     orig_val = orig_board[i]
 
-                    if i in violations_idx:
-                        html_grid += f"<span style='color: #ff4a4a; font-weight: bold;'>{val}</span>"
-                    elif orig_val != 0:
+                    if orig_val != 0:
                         html_grid += f"<span style='color: #3b82f6; font-weight: bold;'>{val}</span>"
+                    elif i in violations_idx:
+                        html_grid += f"<span style='color: #ff4a4a; font-weight: bold;'>{val}</span>"
                     else:
                         html_grid += f"<span style='color: #a1a1aa;'>{val}</span>"
 
