@@ -8,7 +8,7 @@ from flow_matching.path import MixtureDiscreteProbPath
 from flow_matching.path.scheduler import PolynomialConvexScheduler
 from flow_matching.loss import MixturePathGeneralizedKL
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import hydra.utils
 import lightning as L
 import numpy as np
@@ -338,7 +338,6 @@ class Diffusion(L.LightningModule):
     def on_train_epoch_start(self):
         self.backbone.train()
         self.noise.train()
-        self.train_metrics.reset()
 
     def training_step(self, batch, batch_idx):
         loss, _ = self._compute_loss(batch, prefix="train")
@@ -351,11 +350,9 @@ class Diffusion(L.LightningModule):
             prog_bar=True,
         )
 
-        return loss
+        self.log_dict(self.train_metrics, on_step=False, on_epoch=True)
 
-    def on_train_epoch_end(self):
-        current_dict = self.train_metrics.compute()
-        self.log_dict(current_dict, on_step=False, on_epoch=True, sync_dist=True)
+        return loss
 
     def on_validation_epoch_start(self):
         if self.ema:
@@ -372,7 +369,16 @@ class Diffusion(L.LightningModule):
         assert self.valid_metrics.nll.weight == 0
 
     def validation_step(self, batch, batch_idx):
-        loss = self._compute_loss(batch, prefix="val")
+        loss, rec_loss = self._compute_loss(batch, prefix="val")
+
+        self.log(
+            {"val/loss": loss, "val/reconstruct_loss": rec_loss},
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+        )
+
+        self.log_dict(self.valid_metrics, on_step=False, on_epoch=True, sync_dist=True)
 
         # save a slice of sudoku samples from the validation split
         if batch_idx == 0 and len(self.validation_sudoku_samples) == 0:
@@ -389,7 +395,7 @@ class Diffusion(L.LightningModule):
             formatted_data = []
 
             board_batch = self.validation_sudoku_samples[0].to(self.device)
-            batch_solutions = self._sample(board=board_batch)
+            batch_solutions = self._sample(board=board_batch, num_steps=100)
 
             for b_idx, solution in enumerate(batch_solutions):
                 is_valid, violations, violations_idx = check_sudoku_validity(solution)
@@ -443,9 +449,6 @@ class Diffusion(L.LightningModule):
             self.logger.experiment.log(
                 {f"sudoku_samples_step_{self.global_step}": sampled_table}
             )
-
-        valid_dict = self.valid_metrics.compute()
-        self.log_dict(valid_dict, on_step=False, on_epoch=True, sync_dist=True)
 
         if self.ema:
             self.ema.restore(
