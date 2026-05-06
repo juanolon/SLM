@@ -359,11 +359,10 @@ class Diffusion(L.LightningModule):
 
         return loss
 
-    def on_train_epoch_end(self):
-        computed = self.train_metrics.compute()
-        print(f"[DEBUG] train metrics: {computed}")
-        self.log_dict(computed, on_epoch=True)
-        self.train_metrics.reset()
+    # def on_train_epoch_end(self):
+    #     computed = self.train_metrics.compute()
+    #     self.log_dict(computed, on_epoch=True)
+    #     self.train_metrics.reset()
 
     def on_validation_epoch_start(self):
         if self.ema:
@@ -375,7 +374,6 @@ class Diffusion(L.LightningModule):
             )
 
         computed = self.train_metrics.compute()
-        print(f"[DEBUG] train metrics: {computed}")
         self.log_dict(computed, on_epoch=True)
         self.train_metrics.reset()
 
@@ -428,7 +426,6 @@ class Diffusion(L.LightningModule):
                     valid_count += 1
                 total_violations += violations
 
-                print(f"Sample {b_idx}: {solution}")
                 orig_board = board_batch[b_idx].tolist()
                 solution_flat = solution.tolist()
 

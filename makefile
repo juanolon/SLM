@@ -22,6 +22,10 @@ train_sudoku:
 		trainer.devices=1 \
 		lr_scheduler=cosine_decay_warmup \
 		trainer.gradient_clip_val=0.5 \
+		trainer.max_steps=25_000 \
+		optim._target_=torch.optim.AdamW \
+		optim.lr=0.0003 \
+		optim.weight_decay=0.01 \
 
 
 train_text8:
