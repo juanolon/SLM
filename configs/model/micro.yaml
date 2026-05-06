@@ -1,0 +1,10 @@
+name: micro
+type: ddit
+hidden_size: 512
+cond_dim: 256
+length: 81
+n_blocks: 12
+n_heads: 8
+scale_by_sigma: True
+dropout: 0.0
+tie_word_embeddings: False

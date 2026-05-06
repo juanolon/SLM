@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 train_sudoku:
 	python3 main.py \
-		model=nano \
+		model=micro \
 		data=sudoku \
 		data.cache_dir=/system/user/studentwork/jpstumpf/pw/SLM/data/sudoku \
 		parameterization=new_diff \
@@ -10,7 +10,7 @@ train_sudoku:
 		model.length=81 \
 		sampling.length=81 \
 		eval.compute_generative_perplexity=False \
-		wandb.name=nano_sudoku \
+		wandb.name=micro_sudoku \
 		sampling.steps=100 \
 		trainer.val_check_interval=347 \
 		training.beta_bfn=0.75 \
@@ -20,6 +20,8 @@ train_sudoku:
 		loader.num_workers=7 \
 		eval.new_diff_calculate=full \
 		trainer.devices=1 \
+		lr_scheduler=cosine_decay_warmup \
+		trainer.gradient_clip_val=0.5 \
 
 
 train_text8:
