@@ -756,10 +756,20 @@ class Diffusion(L.LightningModule):
     def _loss(self, x0, question=None):
         loss = self._forward_new_diffusion(x0, stage="training", question=question)
 
+        if question is not None:
+            hint_mask = (question > 0).to(self.device)
+            loss = loss.masked_fill(hint_mask, 0.0)
+
+            n_unknown = (~hint_mask).sum(-1).float()
+            sum_loss = loss.sum(-1)
+            mean_loss = (sum_loss / n_unknown).mean()
+        else:
+            sum_loss = loss.sum(-1)
+            mean_loss = loss.mean()
+
         seq_len = x0.shape[1]
-        sum_loss = loss.sum(-1)
         return Loss(
-            loss=loss.mean(),
+            loss=mean_loss,
             nlls=sum_loss / seq_len / self.T,
             reconstruct=torch.tensor(0.0, device=x0.device),
             rnlls=torch.zeros_like(sum_loss),
@@ -772,11 +782,25 @@ class Diffusion(L.LightningModule):
             x0, type=self.reconstruct_type
         )
 
+        if question is not None:
+            hint_mask = (question > 0).to(self.device)
+            loss = loss.masked_fill(hint_mask, 0.0)
+            reconstruct_loss = reconstruct_loss.masked_fill(hint_mask, 0.0)
+
+            n_unknown = (~hint_mask).sum(-1).float()
+            rec_mean = (reconstruct_loss.sum(-1) / n_unknown).mean()
+            sum_loss = loss.sum(-1)
+            mean_loss = (sum_loss / n_unknown).mean()
+        else:
+            sum_loss = loss.sum(-1)
+            mean_loss = loss.mean()
+            rec_mean = reconstruct_loss.mean()
+
         seq_len = x0.shape[1]
         return Loss(
-            loss=loss.mean(),
-            nlls=loss.sum(-1) / seq_len,
-            reconstruct=reconstruct_loss.mean(),
+            loss=mean_loss,
+            nlls=sum_loss / seq_len,
+            reconstruct=rec_mean,
             rnlls=reconstruct_loss.flatten(),
         )
 
