@@ -83,6 +83,7 @@ eval:
   new_diff_calculate: full
 
 optim:
+  _target_: torch.optim.AdamW
   weight_decay: 0 # TODO tunning
   lr: 5e-4       # TODO tunning
   beta1: 0.9

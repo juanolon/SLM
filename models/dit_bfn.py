@@ -203,7 +203,7 @@ class LayerNorm(nn.Module):
         self.dim = dim
 
     def forward(self, x):
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.amp.autocast('cuda', enabled=False):
             x = F.layer_norm(x.float(), [self.dim])
         return x * self.weight[None, None, :]
 
@@ -376,7 +376,7 @@ class DDiTBlock(nn.Module):
         v = v.transpose(1, 2)
 
         # pytorch replacement for flash_attn_varlen_qkvpacked_func.
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.amp.autocast('cuda', enabled=False):
             x = F.scaled_dot_product_attention(
                 q,
                 k,
@@ -537,7 +537,7 @@ class BFN_DIT(nn.Module, huggingface_hub.PyTorchModelHubMixin):
 
         rotary_cos_sin = self.rotary_emb(x)
 
-        with torch.cuda.amp.autocast(dtype=torch.float16):
+        with torch.amp.autocast('cuda', dtype=torch.float16):
             for i in range(len(self.blocks)):
                 x = self.blocks[i](x, rotary_cos_sin, c, seqlens=None)
             x = self.output_layer(x, c)

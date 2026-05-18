@@ -311,7 +311,7 @@ class Diffusion(L.LightningModule):
         #   #do sparse operation to the inputs distribution.
         #   keep_numbers = (1 - sigma) *
 
-        with torch.cuda.amp.autocast(dtype=torch.float32):
+        with torch.amp.amp.autocast('cuda', dtype=torch.float32):
             logits = self.backbone(x, sigma)
 
         logits = self._new_diff_parameterization(
@@ -383,7 +383,7 @@ class Diffusion(L.LightningModule):
             )
 
         computed = self.train_metrics.compute()
-        self.log_dict(computed, on_epoch=True)
+        self.log_dict(computed, on_epoch=True, sync_dist=True)
         self.train_metrics.reset()
 
         self.backbone.eval()
@@ -473,6 +473,7 @@ class Diffusion(L.LightningModule):
                     "val/sudoku_validity_rate": validity_rate,
                     "val/avg_rule_violations": avg_violations,
                 },
+                sync_dist=False,
                 rank_zero_only=True,
             )
 
