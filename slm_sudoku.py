@@ -311,8 +311,7 @@ class Diffusion(L.LightningModule):
         #   #do sparse operation to the inputs distribution.
         #   keep_numbers = (1 - sigma) *
 
-        with torch.amp.autocast('cuda', dtype=torch.float32):
-            logits = self.backbone(x, sigma)
+        logits = self.backbone(x, sigma)
 
         logits = self._new_diff_parameterization(
             logits, x, stage=stage
@@ -666,7 +665,7 @@ class Diffusion(L.LightningModule):
         )  # Batch, seq, Features
         samples = torch.distributions.Bernoulli(probs=bernoulli_param).sample()
         xt = torch.where(x0 == 1, x0, samples)  # [Batch, Seq, Features]
-        xt = xt / xt.sum(-1, keepdim=True)  # normalize this
+        xt = xt / xt.sum(-1, keepdim=True).clamp(min=1e-8)  # normalize this
 
         return xt
 
@@ -720,7 +719,7 @@ class Diffusion(L.LightningModule):
             # if self.config.c
             mask = xt > 0
             predicted = torch.clamp(predicted, min=1e-6, max=1.0 - 1e-6)
-            weight = torch.clamp(nominator / denominator, min=0.0, max=1.0)
+            weight = torch.clamp(nominator / denominator, min=1e-6, max=1.0 - 1e-4)
             onehot = F.one_hot(x0, num_classes=self.vocab_size)
             # weight = weight.repeat(1,predicted.size(1),predicted.size(2))
             # print(weight)
