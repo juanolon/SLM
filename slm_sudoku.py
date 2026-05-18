@@ -311,7 +311,7 @@ class Diffusion(L.LightningModule):
         #   #do sparse operation to the inputs distribution.
         #   keep_numbers = (1 - sigma) *
 
-        with torch.amp.amp.autocast('cuda', dtype=torch.float32):
+        with torch.amp.autocast('cuda', dtype=torch.float32):
             logits = self.backbone(x, sigma)
 
         logits = self._new_diff_parameterization(
