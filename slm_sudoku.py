@@ -473,7 +473,7 @@ class Diffusion(L.LightningModule):
                     "val/sudoku_validity_rate": validity_rate,
                     "val/avg_rule_violations": avg_violations,
                 },
-                sync_dist=False,
+                sync_dist=True,
                 rank_zero_only=True,
             )
 
