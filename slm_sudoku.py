@@ -354,13 +354,14 @@ class Diffusion(L.LightningModule):
 
         if torch.isnan(loss):
             print(f"[DEBUG] nan loss at step {self.global_step}")
-        # self.log(
-        #     "trainer/loss",
-        #     loss,
-        #     on_step=True,
-        #     on_epoch=True,
-        #     prog_bar=True,
-        # )
+
+        self.log(
+            "trainer/loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         # self.log_dict(self.train_metrics, on_step=False, on_epoch=True)
 
