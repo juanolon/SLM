@@ -153,7 +153,7 @@ class Diffusion(L.LightningModule):
         self.fast_forward_batches = None
         self._validate_configuration()
 
-        self.validation_batch_size = 32
+        self.validation_batch_size = 128
         self.validation_sudoku_samples = []
 
         # debug
