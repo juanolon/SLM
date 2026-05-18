@@ -221,6 +221,13 @@ class Diffusion(L.LightningModule):
             checkpoint["sampler"]["random_state"] = None
 
     def on_train_start(self):
+        if self.trainer.global_rank == 0:
+            wandb.watch(
+                self.backbone,
+                log="all",
+                log_freq=100,     # every N steps
+                log_graph=False,
+            )
         if self.ema:
             self.ema.move_shadow_params_to_device(self.device)
         # Adapted from:
@@ -316,9 +323,9 @@ class Diffusion(L.LightningModule):
 
     def _compute_loss(self, batch, prefix):
         if prefix == "train":
-            losses = self._loss(batch["answer"])
+            losses = self._loss(batch["answer"], batch["question"])
         elif prefix == "val" or prefix == "test":
-            losses = self._valid_loss(batch["answer"])
+            losses = self._valid_loss(batch["answer"], batch["question"])
         else:
             raise ValueError(f"Invalid prefix: {prefix}")
 
@@ -342,6 +349,8 @@ class Diffusion(L.LightningModule):
         self.noise.train()
 
     def training_step(self, batch, batch_idx):
+        self.log("train/avg_rating", batch["rating"].mean(), on_step=True, on_epoch=False)
+
         loss, _ = self._compute_loss(batch, prefix="train")
 
         if torch.isnan(loss):
@@ -398,7 +407,7 @@ class Diffusion(L.LightningModule):
         # save a slice of sudoku samples from the validation split
         if batch_idx == 0 and len(self.validation_sudoku_samples) == 0:
             self.validation_sudoku_samples.append(
-                batch["question"][: self.validation_batch_size].detach().cpu()
+                (batch["question"][: self.validation_batch_size].detach().cpu(), batch["rating"][: self.validation_batch_size].detach().cpu())
             )
 
         return loss
@@ -417,7 +426,8 @@ class Diffusion(L.LightningModule):
             total_violations = 0
             formatted_data = []
 
-            board_batch = self.validation_sudoku_samples[0].to(self.device)
+            questions, ratings = self.validation_sudoku_samples[0]
+            board_batch = questions.to(self.device)
             batch_solutions = self._sample(board=board_batch, num_steps=100)
 
             for b_idx, solution in enumerate(batch_solutions):
@@ -451,7 +461,8 @@ class Diffusion(L.LightningModule):
                 #     ["".join(solution_chars[i : i + 9]) for i in range(0, 81, 9)]
                 # )
                 # formatted_data.append([pretty_grid, is_valid, violations])
-                formatted_data.append([wandb.Html(html_grid), is_valid, violations])
+                rating = ratings[b_idx].item()
+                formatted_data.append([wandb.Html(html_grid), is_valid, violations, rating])
 
             num_evaluated = len(formatted_data)
             validity_rate = valid_count / num_evaluated
@@ -466,7 +477,7 @@ class Diffusion(L.LightningModule):
             )
 
             sampled_table = wandb.Table(
-                columns=["Grid View", "Perfect", "Violations"],
+                columns=["Grid View", "Perfect", "Violations", "Rating"],
                 data=formatted_data,
             )
             self.logger.experiment.log(
@@ -658,25 +669,29 @@ class Diffusion(L.LightningModule):
 
         return xt
 
-    def _forward_new_diffusion(self, x0, stage="training"):
+    def _forward_new_diffusion(self, x0, stage="training", question=None):
         t = self._sample_t(x0.shape[0], x0.device).unsqueeze(-1)  # [Batch, 1]
 
-        if self.T > 0:
-            t = (t * self.T).to(torch.int)
-            t = t / self.T
-            # t \in {1/T, 2/T, ..., 1}
-            t += 1 / self.T
+        t = (t * self.T).to(torch.int)
+        t = t / self.T
+        # t \in {1/T, 2/T, ..., 1}
+        t += 1 / self.T
 
         x_t = self.get_xt_bernoulli(x0, t)  # [Batch, Seq, Features]
         # x_t = x_t / x_t.sum(-1,keepdim=True)
         # t = t.unsqueeze(-1)  # [B,1,1]
         # t = t.repeat(1, x_t.size(1), 1)
+
+        if question is not None:
+            hint_mask = (question > 0).unsqueeze(-1).to(self.device)
+            x0_encoded = F.one_hot(x0.long(), num_classes=self.vocab_size).float().to(self.device)
+            x_t = torch.where(hint_mask, x0_encoded, x_t)
+
         model_output = self.forward(x_t, t, stage=stage)
         # utils.print_nans(model_output, 'model_output')
-        if self.T > 0:
-            diffusion_loss = self._new_diffusion_loss(
-                model_output=model_output, xt=x_t, x0=x0, t=t, stage=stage
-            )
+        diffusion_loss = self._new_diffusion_loss(
+            model_output=model_output, xt=x_t, x0=x0, t=t, stage=stage
+        )
         return diffusion_loss
 
     def _new_diffusion_loss(self, model_output, xt, x0, t, stage="training"):
@@ -738,20 +753,20 @@ class Diffusion(L.LightningModule):
 
         return nlog_p  # T number of KL
 
-    def _loss(self, x0):
-        loss = self._forward_new_diffusion(x0, stage="training")
+    def _loss(self, x0, question=None):
+        loss = self._forward_new_diffusion(x0, stage="training", question=question)
 
         seq_len = x0.shape[1]
         sum_loss = loss.sum(-1)
         return Loss(
             loss=loss.mean(),
-            nlls=sum_loss / seq_len,
+            nlls=sum_loss / seq_len / self.T,
             reconstruct=torch.tensor(0.0, device=x0.device),
             rnlls=torch.zeros_like(sum_loss),
         )
 
-    def _valid_loss(self, x0):
-        loss = self._forward_new_diffusion(x0, stage="inference")
+    def _valid_loss(self, x0, question=None):
+        loss = self._forward_new_diffusion(x0, stage="inference", question=question)
 
         reconstruct_loss = self.compute_reconstruction_loss(
             x0, type=self.reconstruct_type

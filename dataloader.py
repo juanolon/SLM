@@ -468,27 +468,46 @@ def get_text8_dataset(cache_dir, max_seq_length=256, drop_last=True, crop_train=
 
 
 class SudokuDataset(Dataset):
-    def __init__(self, cache_dir, split="train"):
+    def __init__(self, cache_dir, split="train", max_rating=None, min_rating=None):
         _load_dir = f"{cache_dir}/sudoku"
 
         os.makedirs(_load_dir, exist_ok=True)
 
-        questions_path = os.path.join(_load_dir, f"sudoku_{split}_questions.pt")
-        answers_path = os.path.join(_load_dir, f"sudoku_{split}_answers.pt")
+        rating_tag = f"_min{min_rating or 0}_max{max_rating or 'inf'}"
+        questions_path = os.path.join(
+            _load_dir, f"sudoku_{split}{rating_tag}_questions.pt"
+        )
+        answers_path = os.path.join(_load_dir, f"sudoku_{split}{rating_tag}_answers.pt")
+        ratings_path = os.path.join(_load_dir, f"sudoku_{split}{rating_tag}_ratings.pt")
 
         if os.path.exists(questions_path) and os.path.exists(answers_path):
             print(f"Loading pre-processed {split} tensors from disk...")
             self.questions = torch.load(questions_path)
             self.answers = torch.load(answers_path)
+            self.ratings = torch.load(ratings_path)
         else:
             sudoku_features = Features(
-                {"answer": Value("string"), "question": Value("string")}
+                {
+                    "answer": Value("string"),
+                    "question": Value("string"),
+                    "rating": Value("int64"),
+                }
             )
             raw_data = datasets.load_dataset(
                 "sapientinc/sudoku-extreme",
                 cache_dir=cache_dir,
                 features=sudoku_features,
                 split=split,
+            )
+
+            if min_rating is not None:
+                raw_data = raw_data.filter(lambda x: x["rating"] >= min_rating)
+            if max_rating is not None:
+                raw_data = raw_data.filter(lambda x: x["rating"] <= max_rating)
+
+            print(
+                f"Loaded {len(raw_data)} puzzles for split={split} "
+                f"(rating [{min_rating}, {max_rating}])"
             )
 
             def map_chars(string):
@@ -498,18 +517,25 @@ class SudokuDataset(Dataset):
 
             answers = [map_chars(example["answer"]) for example in raw_data]
             questions = [map_chars(example["question"]) for example in raw_data]
+            ratings = [example["rating"] for example in raw_data]
 
             self.answers = torch.tensor(answers, dtype=torch.long)
             self.questions = torch.tensor(questions, dtype=torch.long)
+            self.ratings = torch.tensor(ratings, dtype=torch.float32)
 
             torch.save(self.questions, questions_path)
             torch.save(self.answers, answers_path)
+            torch.save(self.ratings, ratings_path)
 
     def __len__(self):
         return len(self.answers)
 
     def __getitem__(self, idx):
-        return {"question": self.questions[idx], "answer": self.answers[idx]}
+        return {
+            "question": self.questions[idx],
+            "answer": self.answers[idx],
+            "rating": self.ratings[idx],
+        }
 
 
 def _group_texts(examples, block_size, bos, eos):
@@ -587,6 +613,7 @@ def get_dataset(
         )
     elif dataset_name == "uniref50":
         from evodiff.data import UniRefDataset, WrappedUniRefDataset
+
         dataset = UniRefDataset(cache_dir, mode, structure=False)
         train_set = WrappedUniRefDataset(train_set, tokenizer, model.length)
     elif dataset_name == "openwebtext-train":
@@ -747,6 +774,7 @@ def get_tokenizer(config):
         # print(f"using tokenizer: {config.data.tokenizer_name_or_path}")
 
         from evodiff.utils import Tokenizer
+
         tokenizer = Tokenizer()
     elif config.data.tokenizer_name_or_path == "text8":
         tokenizer = Text8Tokenizer()
